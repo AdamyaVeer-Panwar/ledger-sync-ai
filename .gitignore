@@ -4,8 +4,15 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+
 .env
 .env.*
 !.env.example
+
 .vscode/
 .idea/
+.history/
+
+*.egg-info/
+dist/
+build/
