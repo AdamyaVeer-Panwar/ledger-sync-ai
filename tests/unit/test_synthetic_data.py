@@ -51,7 +51,7 @@ def test_exact_match_has_correct_ground_truth():
     assert len(result.ledger_records) == 1
 
     assert result.ground_truth == {
-        "S000001": "L000001",
+        "S000001": ["L000001"],
     }
 
 def test_rounding_difference_preserves_ground_truth():
@@ -80,7 +80,7 @@ def test_rounding_difference_preserves_ground_truth():
     assert settlement.reference == ledger.reference
 
     assert result.ground_truth == {
-        "S000002": "L000002",
+        "S000002": ["L000002"],
     }
 
 def test_rounding_difference_is_registered():
@@ -115,7 +115,7 @@ def test_date_lag_preserves_ground_truth():
     )
 
     assert result.ground_truth == {
-        "S000003": "L000003",
+        "S000003": ["L000003"],
     }
 
 def test_missing_reference_preserves_ground_truth():
@@ -141,7 +141,7 @@ def test_missing_reference_preserves_ground_truth():
     assert settlement.settlement_date == ledger.transaction_date
 
     assert result.ground_truth == {
-        "S000004": "L000004",
+        "S000004": ["L000004"],
     }
 
 def test_wrong_merchant_produces_no_match_ground_truth():
@@ -218,7 +218,7 @@ def test_corrupted_reference_preserves_ground_truth():
     assert ledger.reference == "UTR-100007"
 
     assert result.ground_truth == {
-        "S000007": "L000007",
+        "S000007": ["L000007"],
     }
 
 def test_duplicate_creates_multiple_ledger_candidates():
@@ -251,7 +251,7 @@ def test_duplicate_creates_multiple_ledger_candidates():
     assert ledger.ledger_id != duplicate_ledger.ledger_id
 
     assert result.ground_truth == {
-        "S000008": "L000008",
+        "S000008": ["L000008"],
     }
 
 
@@ -286,7 +286,7 @@ def test_multiple_candidates_creates_competing_ledger_records():
         assert ledger.reference is None
 
     assert result.ground_truth == {
-        "S000009": "L000009",
+        "S000009": ["L000009"],
     }
 
     transaction_dates = {

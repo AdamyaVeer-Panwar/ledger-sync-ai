@@ -7,7 +7,7 @@ from app.domain.synthetic.enums import Scenario
 from app.domain.models import LedgerRecord, SettlementRecord
 from app.domain.synthetic.enums import Scenario
 from app.domain.synthetic.models import ScenarioResult
-
+from app.domain.enums import LedgerEntryType
 
 def create_settlement(
     settlement_id: str,
@@ -32,6 +32,7 @@ def create_ledger(
     amount: Decimal,
     transaction_date: date,
     reference: str | None,
+    entry_type: LedgerEntryType = LedgerEntryType.PAYMENT,
 ) -> LedgerRecord:
     return LedgerRecord(
         ledger_id=ledger_id,
@@ -40,6 +41,7 @@ def create_ledger(
         currency="INR",
         transaction_date=transaction_date,
         reference=reference,
+        entry_type=entry_type,
     )
 
 def generate_exact_match(
@@ -71,7 +73,7 @@ def generate_exact_match(
         settlements=[settlement],
         ledger_records=[ledger],
         ground_truth={
-            context.settlement_id: context.ledger_id,
+            context.settlement_id: [context.ledger_id],
         },
     )
 
@@ -105,7 +107,7 @@ def generate_rounding_difference(
         settlements=[settlement],
         ledger_records=[ledger],
         ground_truth={
-            context.settlement_id: context.ledger_id,
+            context.settlement_id: [context.ledger_id],
         },
     )
 
@@ -139,7 +141,7 @@ def generate_date_lag(
         settlements=[settlement],
         ledger_records=[ledger],
         ground_truth={
-            context.settlement_id: context.ledger_id,
+            context.settlement_id: [context.ledger_id],
         },
     )
 
@@ -172,7 +174,7 @@ def generate_missing_reference(
         settlements=[settlement],
         ledger_records=[ledger],
         ground_truth={
-            context.settlement_id: context.ledger_id,
+            context.settlement_id: [context.ledger_id],
         },
     )
 
@@ -268,7 +270,7 @@ def generate_corrupted_reference(
         settlements=[settlement],
         ledger_records=[ledger],
         ground_truth={
-            context.settlement_id: context.ledger_id,
+            context.settlement_id: [context.ledger_id],
         },
     )
 
@@ -311,7 +313,7 @@ def generate_duplicate(
         settlements=[settlement],
         ledger_records=[ledger, duplicate_ledger],
         ground_truth={
-            context.settlement_id: context.ledger_id,
+            context.settlement_id: [context.ledger_id],
         },
     )
 
@@ -363,6 +365,6 @@ def generate_multiple_candidates(
             next_ledger,
         ],
         ground_truth={
-            context.settlement_id: context.ledger_id,
+            context.settlement_id: [context.ledger_id],
         },
     )

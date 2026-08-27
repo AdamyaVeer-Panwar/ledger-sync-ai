@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from app.domain.enums import MatchStatus
 
+from app.domain.enums import LedgerEntryType
 
 class SettlementRecord(BaseModel):
     settlement_id: str
@@ -22,6 +23,7 @@ class LedgerRecord(BaseModel):
     currency: str
     transaction_date: date
     reference: str | None = None
+    entry_type: LedgerEntryType
 
 
 class MatchDecision(BaseModel):

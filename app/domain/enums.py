@@ -8,3 +8,7 @@ class MatchStatus(str, Enum):
     HUMAN_REVIEW = "HUMAN_REVIEW"
     NO_MATCH = "NO_MATCH"
     FAILED = "FAILED"
+
+class LedgerEntryType(str, Enum):
+    PAYMENT = "PAYMENT"
+    REFUND = "REFUND"
