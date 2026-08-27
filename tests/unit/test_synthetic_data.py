@@ -3,7 +3,15 @@ from datetime import date
 
 from app.domain.synthetic.models import ScenarioContext
 from app.domain.synthetic.scenarios import generate_exact_match
+from decimal import Decimal
+from app.domain.synthetic.scenarios import Scenario
+from app.domain.synthetic.generator import SCENARIO_GENERATORS
 
+from app.domain.synthetic.scenarios import (
+    
+    generate_exact_match,
+    generate_rounding_difference,
+)
 
 def test_scenario_context():
     context = ScenarioContext(
@@ -35,3 +43,35 @@ def test_exact_match_has_correct_ground_truth():
     assert result.ground_truth == {
         "S000001": "L000001",
     }
+
+def test_rounding_difference_preserves_ground_truth():
+    context = ScenarioContext(
+        settlement_id="S000002",
+        ledger_id="L000002",
+        rng=random.Random(42),
+        base_date=date(2026, 8, 25),
+    )
+
+    result = generate_rounding_difference(context)
+
+    settlement = result.settlements[0]
+    ledger = result.ledger_records[0]
+
+    assert result.scenario == Scenario.ROUNDING_DIFFERENCE
+
+    assert settlement.amount == Decimal("1000.00")
+    assert ledger.amount == Decimal("999.98")
+
+    assert settlement.amount != ledger.amount
+
+    assert abs(settlement.amount - ledger.amount) == Decimal("0.02")
+
+    assert settlement.merchant_id == ledger.merchant_id
+    assert settlement.reference == ledger.reference
+
+    assert result.ground_truth == {
+        "S000002": "L000002",
+    }
+
+def test_rounding_difference_is_registered():
+    assert Scenario.ROUNDING_DIFFERENCE in SCENARIO_GENERATORS

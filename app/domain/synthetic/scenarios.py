@@ -74,3 +74,37 @@ def generate_exact_match(
             context.settlement_id: context.ledger_id,
         },
     )
+
+def generate_rounding_difference(
+    context: ScenarioContext,
+) -> ScenarioResult:
+    merchant_id = "M001"
+    settlement_amount = Decimal("1000.00")
+    ledger_amount = Decimal("999.98")
+    settlement_date = context.base_date
+    reference = "UTR100002"
+
+    settlement = create_settlement(
+        settlement_id=context.settlement_id,
+        merchant_id=merchant_id,
+        amount=settlement_amount,
+        settlement_date=settlement_date,
+        reference=reference,
+    )
+
+    ledger = create_ledger(
+        ledger_id=context.ledger_id,
+        merchant_id=merchant_id,
+        amount=ledger_amount,
+        transaction_date=settlement_date,
+        reference=reference,
+    )
+
+    return ScenarioResult(
+        scenario=Scenario.ROUNDING_DIFFERENCE,
+        settlements=[settlement],
+        ledger_records=[ledger],
+        ground_truth={
+            context.settlement_id: context.ledger_id,
+        },
+    )
