@@ -1,13 +1,11 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
-from app.domain.synthetic.models import ScenarioContext, ScenarioResult
-from app.domain.synthetic.enums import Scenario
-
-from app.domain.models import LedgerRecord, SettlementRecord
-from app.domain.synthetic.enums import Scenario
-from app.domain.synthetic.models import ScenarioResult
 from app.domain.enums import LedgerEntryType
+from app.domain.models import LedgerRecord, SettlementRecord
+from app.domain.synthetic.data_factory import SyntheticDataFactory
+from app.domain.synthetic.enums import Scenario
+from app.domain.synthetic.models import ScenarioContext, ScenarioResult
 
 
 def create_settlement(
@@ -45,13 +43,28 @@ def create_ledger(
         entry_type=entry_type,
     )
 
+
+def _create_factory(context: ScenarioContext) -> SyntheticDataFactory:
+    return SyntheticDataFactory(
+        rng=context.rng,
+        base_date=context.base_date,
+    )
+
+
+def _next_ledger_id(ledger_id: str, offset: int = 1) -> str:
+    number = int(ledger_id[1:])
+    return f"L{number + offset:06d}"
+
+
 def generate_exact_match(
     context: ScenarioContext,
 ) -> ScenarioResult:
-    merchant_id = "M001"
-    amount = Decimal("1000.00")
-    settlement_date = context.base_date
-    reference = "UTR100001"
+    factory = _create_factory(context)
+
+    merchant_id = factory.merchant_id()
+    amount = factory.amount()
+    settlement_date = factory.transaction_date()
+    reference = factory.reference(context.settlement_id)
 
     settlement = create_settlement(
         settlement_id=context.settlement_id,
@@ -78,14 +91,17 @@ def generate_exact_match(
         },
     )
 
+
 def generate_rounding_difference(
     context: ScenarioContext,
 ) -> ScenarioResult:
-    merchant_id = "M001"
-    settlement_amount = Decimal("1000.00")
-    ledger_amount = Decimal("999.98")
-    settlement_date = context.base_date
-    reference = "UTR100002"
+    factory = _create_factory(context)
+
+    merchant_id = factory.merchant_id()
+    settlement_amount = factory.amount()
+    ledger_amount = settlement_amount - Decimal("0.02")
+    settlement_date = factory.transaction_date()
+    reference = factory.reference(context.settlement_id)
 
     settlement = create_settlement(
         settlement_id=context.settlement_id,
@@ -112,14 +128,17 @@ def generate_rounding_difference(
         },
     )
 
+
 def generate_date_lag(
     context: ScenarioContext,
 ) -> ScenarioResult:
-    merchant_id = "M001"
-    amount = Decimal("1000.00")
-    settlement_date = context.base_date
+    factory = _create_factory(context)
+
+    merchant_id = factory.merchant_id()
+    amount = factory.amount()
+    settlement_date = factory.transaction_date()
     ledger_date = settlement_date + timedelta(days=2)
-    reference = "UTR100003"
+    reference = factory.reference(context.settlement_id)
 
     settlement = create_settlement(
         settlement_id=context.settlement_id,
@@ -150,9 +169,11 @@ def generate_date_lag(
 def generate_missing_reference(
     context: ScenarioContext,
 ) -> ScenarioResult:
-    merchant_id = "M001"
-    amount = Decimal("1000.00")
-    settlement_date = context.base_date
+    factory = _create_factory(context)
+
+    merchant_id = factory.merchant_id()
+    amount = factory.amount()
+    settlement_date = factory.transaction_date()
 
     settlement = create_settlement(
         settlement_id=context.settlement_id,
@@ -179,15 +200,21 @@ def generate_missing_reference(
         },
     )
 
+
 def generate_wrong_merchant(
     context: ScenarioContext,
 ) -> ScenarioResult:
-    settlement_merchant_id = "M001"
-    ledger_merchant_id = "M002"
+    factory = _create_factory(context)
 
-    amount = Decimal("1000.00")
-    settlement_date = context.base_date
-    reference = "UTR100005"
+    settlement_merchant_id = factory.merchant_id()
+    ledger_merchant_id = factory.merchant_id()
+
+    while ledger_merchant_id == settlement_merchant_id:
+        ledger_merchant_id = factory.merchant_id()
+
+    amount = factory.amount()
+    settlement_date = factory.transaction_date()
+    reference = factory.reference(context.settlement_id)
 
     settlement = create_settlement(
         settlement_id=context.settlement_id,
@@ -218,10 +245,12 @@ def generate_wrong_merchant(
 def generate_missing_ledger(
     context: ScenarioContext,
 ) -> ScenarioResult:
-    merchant_id = "M001"
-    amount = Decimal("1000.00")
-    settlement_date = context.base_date
-    reference = "UTR100006"
+    factory = _create_factory(context)
+
+    merchant_id = factory.merchant_id()
+    amount = factory.amount()
+    settlement_date = factory.transaction_date()
+    reference = factory.reference(context.settlement_id)
 
     settlement = create_settlement(
         settlement_id=context.settlement_id,
@@ -240,15 +269,18 @@ def generate_missing_ledger(
         },
     )
 
+
 def generate_corrupted_reference(
     context: ScenarioContext,
 ) -> ScenarioResult:
-    merchant_id = "M001"
-    amount = Decimal("1000.00")
-    settlement_date = context.base_date
+    factory = _create_factory(context)
 
-    settlement_reference = "UTR100007"
-    ledger_reference = "UTR-100007"
+    merchant_id = factory.merchant_id()
+    amount = factory.amount()
+    settlement_date = factory.transaction_date()
+
+    settlement_reference = factory.reference(context.settlement_id)
+    corrupted_reference = settlement_reference.replace("-", "")
 
     settlement = create_settlement(
         settlement_id=context.settlement_id,
@@ -263,7 +295,7 @@ def generate_corrupted_reference(
         merchant_id=merchant_id,
         amount=amount,
         transaction_date=settlement_date,
-        reference=ledger_reference,
+        reference=corrupted_reference,
     )
 
     return ScenarioResult(
@@ -275,13 +307,16 @@ def generate_corrupted_reference(
         },
     )
 
+
 def generate_duplicate(
     context: ScenarioContext,
 ) -> ScenarioResult:
-    merchant_id = "M001"
-    amount = Decimal("1000.00")
-    transaction_date = context.base_date
-    reference = "UTR100008"
+    factory = _create_factory(context)
+
+    merchant_id = factory.merchant_id()
+    amount = factory.amount()
+    transaction_date = factory.transaction_date()
+    reference = factory.reference(context.settlement_id)
 
     settlement = create_settlement(
         settlement_id=context.settlement_id,
@@ -299,10 +334,8 @@ def generate_duplicate(
         reference=reference,
     )
 
-    duplicate_ledger_id = f"L{int(context.ledger_id[1:]) + 1:06d}"
-
     duplicate_ledger = create_ledger(
-        ledger_id=duplicate_ledger_id,
+        ledger_id=_next_ledger_id(context.ledger_id),
         merchant_id=merchant_id,
         amount=amount,
         transaction_date=transaction_date,
@@ -318,12 +351,15 @@ def generate_duplicate(
         },
     )
 
+
 def generate_multiple_candidates(
     context: ScenarioContext,
 ) -> ScenarioResult:
-    merchant_id = "M001"
-    amount = Decimal("1000.00")
-    settlement_date = context.base_date
+    factory = _create_factory(context)
+
+    merchant_id = factory.merchant_id()
+    amount = factory.amount()
+    settlement_date = factory.transaction_date()
 
     settlement = create_settlement(
         settlement_id=context.settlement_id,
@@ -342,7 +378,7 @@ def generate_multiple_candidates(
     )
 
     previous_ledger = create_ledger(
-        ledger_id=f"L{int(context.ledger_id[1:]) + 1:06d}",
+        ledger_id=_next_ledger_id(context.ledger_id, 1),
         merchant_id=merchant_id,
         amount=amount,
         transaction_date=settlement_date - timedelta(days=1),
@@ -350,7 +386,7 @@ def generate_multiple_candidates(
     )
 
     next_ledger = create_ledger(
-        ledger_id=f"L{int(context.ledger_id[1:]) + 2:06d}",
+        ledger_id=_next_ledger_id(context.ledger_id, 2),
         merchant_id=merchant_id,
         amount=amount,
         transaction_date=settlement_date + timedelta(days=1),
@@ -374,14 +410,25 @@ def generate_multiple_candidates(
 def generate_partial_refund(
     context: ScenarioContext,
 ) -> ScenarioResult:
-    merchant_id = "M001"
-    original_amount = Decimal("1000.00")
-    refund_amount = Decimal("100.00")
-    settlement_amount = original_amount - refund_amount
-    settlement_date = context.base_date
+    factory = _create_factory(context)
 
-    settlement_reference = "UTR100010"
-    refund_reference = "UTR100010-REFUND"
+    merchant_id = factory.merchant_id()
+
+    original_amount = factory.amount()
+
+    # Keep the refund smaller than the original payment.
+    max_refund_cents = int(original_amount * 100) - 1
+    refund_cents = factory.rng.randint(
+        1,
+        min(max_refund_cents, 10_000),
+    )
+    refund_amount = Decimal(refund_cents) / Decimal("100")
+
+    settlement_amount = original_amount - refund_amount
+    settlement_date = factory.transaction_date()
+
+    settlement_reference = factory.reference(context.settlement_id)
+    refund_reference = f"{settlement_reference}-REFUND"
 
     settlement = create_settlement(
         settlement_id=context.settlement_id,
@@ -400,7 +447,7 @@ def generate_partial_refund(
         entry_type=LedgerEntryType.PAYMENT,
     )
 
-    refund_ledger_id = f"L{int(context.ledger_id[1:]) + 1:06d}"
+    refund_ledger_id = _next_ledger_id(context.ledger_id)
 
     refund_ledger = create_ledger(
         ledger_id=refund_ledger_id,
@@ -414,7 +461,10 @@ def generate_partial_refund(
     return ScenarioResult(
         scenario=Scenario.PARTIAL_REFUND,
         settlements=[settlement],
-        ledger_records=[payment_ledger, refund_ledger],
+        ledger_records=[
+            payment_ledger,
+            refund_ledger,
+        ],
         ground_truth={
             context.settlement_id: [
                 context.ledger_id,

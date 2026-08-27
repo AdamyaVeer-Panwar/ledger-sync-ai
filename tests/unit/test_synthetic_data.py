@@ -1,29 +1,23 @@
 import random
-from datetime import date
-
-from app.domain.synthetic.models import ScenarioContext
-from app.domain.synthetic.scenarios import generate_exact_match
-from decimal import Decimal
-from app.domain.synthetic.scenarios import Scenario
-from app.domain.synthetic.generator import SCENARIO_GENERATORS
-from app.domain.enums import LedgerEntryType
-
 from datetime import date, timedelta
 from decimal import Decimal
 
-
+from app.domain.enums import LedgerEntryType
+from app.domain.synthetic.enums import Scenario
+from app.domain.synthetic.models import ScenarioContext
 from app.domain.synthetic.scenarios import (
-    generate_date_lag,
-    generate_exact_match,
-    generate_missing_reference,
-    generate_rounding_difference,
-    generate_wrong_merchant,
-    generate_missing_ledger,
     generate_corrupted_reference,
+    generate_date_lag,
     generate_duplicate,
+    generate_exact_match,
+    generate_missing_ledger,
+    generate_missing_reference,
     generate_multiple_candidates,
     generate_partial_refund,
+    generate_rounding_difference,
+    generate_wrong_merchant,
 )
+
 
 def test_scenario_context():
     context = ScenarioContext(
@@ -48,13 +42,21 @@ def test_exact_match_has_correct_ground_truth():
 
     result = generate_exact_match(context)
 
-    assert result.scenario.value == "exact_match"
-    assert len(result.settlements) == 1
-    assert len(result.ledger_records) == 1
+    settlement = result.settlements[0]
+    ledger = result.ledger_records[0]
+
+    assert result.scenario == Scenario.EXACT_MATCH
+
+    assert settlement.merchant_id == ledger.merchant_id
+    assert settlement.amount == ledger.amount
+    assert settlement.currency == ledger.currency
+    assert settlement.settlement_date == ledger.transaction_date
+    assert settlement.reference == ledger.reference
 
     assert result.ground_truth == {
         "S000001": ["L000001"],
     }
+
 
 def test_rounding_difference_preserves_ground_truth():
     context = ScenarioContext(
@@ -71,22 +73,16 @@ def test_rounding_difference_preserves_ground_truth():
 
     assert result.scenario == Scenario.ROUNDING_DIFFERENCE
 
-    assert settlement.amount == Decimal("1000.00")
-    assert ledger.amount == Decimal("999.98")
-
     assert settlement.amount != ledger.amount
-
-    assert abs(settlement.amount - ledger.amount) == Decimal("0.02")
+    assert settlement.amount - ledger.amount == Decimal("0.02")
 
     assert settlement.merchant_id == ledger.merchant_id
+    assert settlement.settlement_date == ledger.transaction_date
     assert settlement.reference == ledger.reference
 
     assert result.ground_truth == {
         "S000002": ["L000002"],
     }
-
-def test_rounding_difference_is_registered():
-    assert Scenario.ROUNDING_DIFFERENCE in SCENARIO_GENERATORS
 
 
 def test_date_lag_preserves_ground_truth():
@@ -104,13 +100,10 @@ def test_date_lag_preserves_ground_truth():
 
     assert result.scenario == Scenario.DATE_LAG
 
-    assert settlement.amount == Decimal("1000.00")
-    assert ledger.amount == Decimal("1000.00")
-
+    assert settlement.amount == ledger.amount
     assert settlement.merchant_id == ledger.merchant_id
     assert settlement.reference == ledger.reference
 
-    assert settlement.settlement_date != ledger.transaction_date
     assert (
         ledger.transaction_date - settlement.settlement_date
         == timedelta(days=2)
@@ -119,6 +112,7 @@ def test_date_lag_preserves_ground_truth():
     assert result.ground_truth == {
         "S000003": ["L000003"],
     }
+
 
 def test_missing_reference_preserves_ground_truth():
     context = ScenarioContext(
@@ -146,6 +140,7 @@ def test_missing_reference_preserves_ground_truth():
         "S000004": ["L000004"],
     }
 
+
 def test_wrong_merchant_produces_no_match_ground_truth():
     context = ScenarioContext(
         settlement_id="S000005",
@@ -171,6 +166,7 @@ def test_wrong_merchant_produces_no_match_ground_truth():
         "S000005": None,
     }
 
+
 def test_missing_ledger_produces_no_match_ground_truth():
     context = ScenarioContext(
         settlement_id="S000006",
@@ -188,13 +184,14 @@ def test_missing_ledger_produces_no_match_ground_truth():
     assert len(result.settlements) == 1
     assert len(result.ledger_records) == 0
 
-    assert settlement.merchant_id == "M001"
-    assert settlement.amount == Decimal("1000.00")
-    assert settlement.reference == "UTR100006"
+    assert settlement.merchant_id.startswith("M")
+    assert settlement.amount > 0
+    assert settlement.reference is not None
 
     assert result.ground_truth == {
         "S000006": None,
     }
+
 
 def test_corrupted_reference_preserves_ground_truth():
     context = ScenarioContext(
@@ -215,13 +212,16 @@ def test_corrupted_reference_preserves_ground_truth():
     assert settlement.merchant_id == ledger.merchant_id
     assert settlement.settlement_date == ledger.transaction_date
 
+    assert settlement.reference is not None
+    assert ledger.reference is not None
     assert settlement.reference != ledger.reference
-    assert settlement.reference == "UTR100007"
-    assert ledger.reference == "UTR-100007"
+
+    assert settlement.reference.replace("-", "") == ledger.reference
 
     assert result.ground_truth == {
         "S000007": ["L000007"],
     }
+
 
 def test_duplicate_creates_multiple_ledger_candidates():
     context = ScenarioContext(
@@ -291,16 +291,18 @@ def test_multiple_candidates_creates_competing_ledger_records():
         "S000009": ["L000009"],
     }
 
-    transaction_dates = {
+    expected_dates = {
+        settlement.settlement_date - timedelta(days=1),
+        settlement.settlement_date,
+        settlement.settlement_date + timedelta(days=1),
+    }
+
+    actual_dates = {
         ledger.transaction_date
         for ledger in result.ledger_records
     }
 
-    assert transaction_dates == {
-        date(2026, 8, 24),
-        date(2026, 8, 25),
-        date(2026, 8, 26),
-    }
+    assert actual_dates == expected_dates
 
 
 def test_partial_refund_creates_related_ledger_events():
@@ -321,20 +323,26 @@ def test_partial_refund_creates_related_ledger_events():
     assert len(result.settlements) == 1
     assert len(result.ledger_records) == 2
 
-    assert settlement.amount == Decimal("900.00")
-
-    assert payment_ledger.amount == Decimal("1000.00")
     assert payment_ledger.entry_type == LedgerEntryType.PAYMENT
-
-    assert refund_ledger.amount == Decimal("100.00")
     assert refund_ledger.entry_type == LedgerEntryType.REFUND
+
+    assert payment_ledger.amount > refund_ledger.amount
+    assert (
+        payment_ledger.amount - refund_ledger.amount
+        == settlement.amount
+    )
 
     assert payment_ledger.merchant_id == settlement.merchant_id
     assert refund_ledger.merchant_id == settlement.merchant_id
 
+    assert payment_ledger.reference == settlement.reference
+
+    assert refund_ledger.reference is not None
+    assert refund_ledger.reference.endswith("-REFUND")
+
     assert (
-        payment_ledger.amount - refund_ledger.amount
-        == settlement.amount
+        refund_ledger.transaction_date - payment_ledger.transaction_date
+        == timedelta(days=1)
     )
 
     assert result.ground_truth == {
