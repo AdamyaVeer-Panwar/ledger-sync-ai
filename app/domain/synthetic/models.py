@@ -1,9 +1,17 @@
 from pydantic import BaseModel, Field
+from dataclasses import dataclass
+from datetime import date
+import random
 
 from app.domain.models import LedgerRecord, SettlementRecord
 from app.domain.synthetic.enums import Scenario
 
-
+@dataclass
+class ScenarioContext:
+    settlement_id: str
+    ledger_id: str
+    rng: random.Random
+    base_date: date
 class ScenarioResult(BaseModel):
     scenario: Scenario
     settlements: list[SettlementRecord] = Field(default_factory=list)

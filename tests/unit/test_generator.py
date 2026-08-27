@@ -2,6 +2,7 @@ from app.domain.synthetic.enums import Scenario
 from app.domain.synthetic.generator import DatasetGenerator
 
 
+
 def test_generator_produces_dataset():
     generator = DatasetGenerator(records=1, seed=42)
 
