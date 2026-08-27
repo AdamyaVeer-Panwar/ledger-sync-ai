@@ -35,3 +35,6 @@ def test_duplicate_is_registered():
 
 def test_multiple_candidates_is_registered():
     assert Scenario.MULTIPLE_CANDIDATES in SCENARIO_GENERATORS
+
+def test_partial_refund_is_registered():
+    assert Scenario.PARTIAL_REFUND in SCENARIO_GENERATORS

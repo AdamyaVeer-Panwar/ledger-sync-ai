@@ -9,6 +9,7 @@ from app.domain.synthetic.enums import Scenario
 from app.domain.synthetic.models import ScenarioResult
 from app.domain.enums import LedgerEntryType
 
+
 def create_settlement(
     settlement_id: str,
     merchant_id: str,
@@ -366,5 +367,58 @@ def generate_multiple_candidates(
         ],
         ground_truth={
             context.settlement_id: [context.ledger_id],
+        },
+    )
+
+
+def generate_partial_refund(
+    context: ScenarioContext,
+) -> ScenarioResult:
+    merchant_id = "M001"
+    original_amount = Decimal("1000.00")
+    refund_amount = Decimal("100.00")
+    settlement_amount = original_amount - refund_amount
+    settlement_date = context.base_date
+
+    settlement_reference = "UTR100010"
+    refund_reference = "UTR100010-REFUND"
+
+    settlement = create_settlement(
+        settlement_id=context.settlement_id,
+        merchant_id=merchant_id,
+        amount=settlement_amount,
+        settlement_date=settlement_date,
+        reference=settlement_reference,
+    )
+
+    payment_ledger = create_ledger(
+        ledger_id=context.ledger_id,
+        merchant_id=merchant_id,
+        amount=original_amount,
+        transaction_date=settlement_date,
+        reference=settlement_reference,
+        entry_type=LedgerEntryType.PAYMENT,
+    )
+
+    refund_ledger_id = f"L{int(context.ledger_id[1:]) + 1:06d}"
+
+    refund_ledger = create_ledger(
+        ledger_id=refund_ledger_id,
+        merchant_id=merchant_id,
+        amount=refund_amount,
+        transaction_date=settlement_date + timedelta(days=1),
+        reference=refund_reference,
+        entry_type=LedgerEntryType.REFUND,
+    )
+
+    return ScenarioResult(
+        scenario=Scenario.PARTIAL_REFUND,
+        settlements=[settlement],
+        ledger_records=[payment_ledger, refund_ledger],
+        ground_truth={
+            context.settlement_id: [
+                context.ledger_id,
+                refund_ledger_id,
+            ],
         },
     )

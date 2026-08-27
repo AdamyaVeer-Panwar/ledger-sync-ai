@@ -6,6 +6,7 @@ from app.domain.synthetic.scenarios import generate_exact_match
 from decimal import Decimal
 from app.domain.synthetic.scenarios import Scenario
 from app.domain.synthetic.generator import SCENARIO_GENERATORS
+from app.domain.enums import LedgerEntryType
 
 from datetime import date, timedelta
 from decimal import Decimal
@@ -21,6 +22,7 @@ from app.domain.synthetic.scenarios import (
     generate_corrupted_reference,
     generate_duplicate,
     generate_multiple_candidates,
+    generate_partial_refund,
 )
 
 def test_scenario_context():
@@ -298,4 +300,43 @@ def test_multiple_candidates_creates_competing_ledger_records():
         date(2026, 8, 24),
         date(2026, 8, 25),
         date(2026, 8, 26),
+    }
+
+
+def test_partial_refund_creates_related_ledger_events():
+    context = ScenarioContext(
+        settlement_id="S000010",
+        ledger_id="L000010",
+        rng=random.Random(42),
+        base_date=date(2026, 8, 25),
+    )
+
+    result = generate_partial_refund(context)
+
+    settlement = result.settlements[0]
+    payment_ledger, refund_ledger = result.ledger_records
+
+    assert result.scenario == Scenario.PARTIAL_REFUND
+
+    assert len(result.settlements) == 1
+    assert len(result.ledger_records) == 2
+
+    assert settlement.amount == Decimal("900.00")
+
+    assert payment_ledger.amount == Decimal("1000.00")
+    assert payment_ledger.entry_type == LedgerEntryType.PAYMENT
+
+    assert refund_ledger.amount == Decimal("100.00")
+    assert refund_ledger.entry_type == LedgerEntryType.REFUND
+
+    assert payment_ledger.merchant_id == settlement.merchant_id
+    assert refund_ledger.merchant_id == settlement.merchant_id
+
+    assert (
+        payment_ledger.amount - refund_ledger.amount
+        == settlement.amount
+    )
+
+    assert result.ground_truth == {
+        "S000010": ["L000010", "L000011"],
     }
