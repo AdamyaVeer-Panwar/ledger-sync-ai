@@ -2,7 +2,7 @@ import argparse
 
 from app.domain.synthetic.generator import DatasetGenerator
 from app.domain.synthetic.serialization import write_dataset
-
+from app.domain.synthetic.validator import validate_dataset
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -42,6 +42,10 @@ def main() -> None:
     )
 
     dataset = generator.generate()
+
+    validate_dataset(dataset)
+
+    write_dataset(dataset, args.output)
 
     write_dataset(
         dataset,
