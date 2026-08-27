@@ -271,3 +271,46 @@ def generate_corrupted_reference(
             context.settlement_id: context.ledger_id,
         },
     )
+
+def generate_duplicate(
+    context: ScenarioContext,
+) -> ScenarioResult:
+    merchant_id = "M001"
+    amount = Decimal("1000.00")
+    transaction_date = context.base_date
+    reference = "UTR100008"
+
+    settlement = create_settlement(
+        settlement_id=context.settlement_id,
+        merchant_id=merchant_id,
+        amount=amount,
+        settlement_date=transaction_date,
+        reference=reference,
+    )
+
+    ledger = create_ledger(
+        ledger_id=context.ledger_id,
+        merchant_id=merchant_id,
+        amount=amount,
+        transaction_date=transaction_date,
+        reference=reference,
+    )
+
+    duplicate_ledger_id = f"L{int(context.ledger_id[1:]) + 1:06d}"
+
+    duplicate_ledger = create_ledger(
+        ledger_id=duplicate_ledger_id,
+        merchant_id=merchant_id,
+        amount=amount,
+        transaction_date=transaction_date,
+        reference=reference,
+    )
+
+    return ScenarioResult(
+        scenario=Scenario.DUPLICATE,
+        settlements=[settlement],
+        ledger_records=[ledger, duplicate_ledger],
+        ground_truth={
+            context.settlement_id: context.ledger_id,
+        },
+    )

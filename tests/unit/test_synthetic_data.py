@@ -19,6 +19,7 @@ from app.domain.synthetic.scenarios import (
     generate_wrong_merchant,
     generate_missing_ledger,
     generate_corrupted_reference,
+    generate_duplicate,
 )
 
 def test_scenario_context():
@@ -217,4 +218,37 @@ def test_corrupted_reference_preserves_ground_truth():
 
     assert result.ground_truth == {
         "S000007": "L000007",
+    }
+
+def test_duplicate_creates_multiple_ledger_candidates():
+    context = ScenarioContext(
+        settlement_id="S000008",
+        ledger_id="L000008",
+        rng=random.Random(42),
+        base_date=date(2026, 8, 25),
+    )
+
+    result = generate_duplicate(context)
+
+    settlement = result.settlements[0]
+    ledger, duplicate_ledger = result.ledger_records
+
+    assert result.scenario == Scenario.DUPLICATE
+
+    assert len(result.settlements) == 1
+    assert len(result.ledger_records) == 2
+
+    assert settlement.merchant_id == ledger.merchant_id
+    assert settlement.merchant_id == duplicate_ledger.merchant_id
+
+    assert settlement.amount == ledger.amount
+    assert settlement.amount == duplicate_ledger.amount
+
+    assert settlement.reference == ledger.reference
+    assert settlement.reference == duplicate_ledger.reference
+
+    assert ledger.ledger_id != duplicate_ledger.ledger_id
+
+    assert result.ground_truth == {
+        "S000008": "L000008",
     }

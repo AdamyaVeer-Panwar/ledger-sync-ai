@@ -29,3 +29,6 @@ def test_missing_ledger_is_registered():
 
 def test_corrupted_reference_is_registered():
     assert Scenario.CORRUPTED_REFERENCE in SCENARIO_GENERATORS
+
+def test_duplicate_is_registered():
+    assert Scenario.DUPLICATE in SCENARIO_GENERATORS
