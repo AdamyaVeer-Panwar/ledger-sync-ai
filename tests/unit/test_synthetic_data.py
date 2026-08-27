@@ -7,18 +7,16 @@ from decimal import Decimal
 from app.domain.synthetic.scenarios import Scenario
 from app.domain.synthetic.generator import SCENARIO_GENERATORS
 
-from app.domain.synthetic.scenarios import (
-    
-    generate_exact_match,
-    generate_rounding_difference,
-)
 from datetime import date, timedelta
 from decimal import Decimal
+
 
 from app.domain.synthetic.scenarios import (
     generate_date_lag,
     generate_exact_match,
+    generate_missing_reference,
     generate_rounding_difference,
+    generate_wrong_merchant,
 )
 
 def test_scenario_context():
@@ -116,5 +114,54 @@ def test_date_lag_preserves_ground_truth():
         "S000003": "L000003",
     }
 
+def test_missing_reference_preserves_ground_truth():
+    context = ScenarioContext(
+        settlement_id="S000004",
+        ledger_id="L000004",
+        rng=random.Random(42),
+        base_date=date(2026, 8, 25),
+    )
 
+    result = generate_missing_reference(context)
+
+    settlement = result.settlements[0]
+    ledger = result.ledger_records[0]
+
+    assert result.scenario == Scenario.MISSING_REFERENCE
+
+    assert settlement.reference is None
+    assert ledger.reference is None
+
+    assert settlement.amount == ledger.amount
+    assert settlement.merchant_id == ledger.merchant_id
+    assert settlement.settlement_date == ledger.transaction_date
+
+    assert result.ground_truth == {
+        "S000004": "L000004",
+    }
+
+def test_wrong_merchant_produces_no_match_ground_truth():
+    context = ScenarioContext(
+        settlement_id="S000005",
+        ledger_id="L000005",
+        rng=random.Random(42),
+        base_date=date(2026, 8, 25),
+    )
+
+    result = generate_wrong_merchant(context)
+
+    settlement = result.settlements[0]
+    ledger = result.ledger_records[0]
+
+    assert result.scenario == Scenario.WRONG_MERCHANT
+
+    assert settlement.merchant_id != ledger.merchant_id
+
+    assert settlement.amount == ledger.amount
+    assert settlement.reference == ledger.reference
+    assert settlement.settlement_date == ledger.transaction_date
+
+    assert result.ground_truth == {
+        "S000005": None,
+    }
 

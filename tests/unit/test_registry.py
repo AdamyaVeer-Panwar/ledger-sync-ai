@@ -17,3 +17,9 @@ def test_registered_generator_is_callable():
 
 def test_date_lag_is_registered():
     assert Scenario.DATE_LAG in SCENARIO_GENERATORS
+
+def test_missing_reference_is_registered():
+    assert Scenario.MISSING_REFERENCE in SCENARIO_GENERATORS
+
+def test_wrong_merchant_is_registered():
+    assert Scenario.WRONG_MERCHANT in SCENARIO_GENERATORS
