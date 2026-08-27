@@ -12,6 +12,14 @@ from app.domain.synthetic.scenarios import (
     generate_exact_match,
     generate_rounding_difference,
 )
+from datetime import date, timedelta
+from decimal import Decimal
+
+from app.domain.synthetic.scenarios import (
+    generate_date_lag,
+    generate_exact_match,
+    generate_rounding_difference,
+)
 
 def test_scenario_context():
     context = ScenarioContext(
@@ -75,3 +83,38 @@ def test_rounding_difference_preserves_ground_truth():
 
 def test_rounding_difference_is_registered():
     assert Scenario.ROUNDING_DIFFERENCE in SCENARIO_GENERATORS
+
+
+def test_date_lag_preserves_ground_truth():
+    context = ScenarioContext(
+        settlement_id="S000003",
+        ledger_id="L000003",
+        rng=random.Random(42),
+        base_date=date(2026, 8, 25),
+    )
+
+    result = generate_date_lag(context)
+
+    settlement = result.settlements[0]
+    ledger = result.ledger_records[0]
+
+    assert result.scenario == Scenario.DATE_LAG
+
+    assert settlement.amount == Decimal("1000.00")
+    assert ledger.amount == Decimal("1000.00")
+
+    assert settlement.merchant_id == ledger.merchant_id
+    assert settlement.reference == ledger.reference
+
+    assert settlement.settlement_date != ledger.transaction_date
+    assert (
+        ledger.transaction_date - settlement.settlement_date
+        == timedelta(days=2)
+    )
+
+    assert result.ground_truth == {
+        "S000003": "L000003",
+    }
+
+
+

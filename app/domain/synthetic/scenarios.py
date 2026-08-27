@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from app.domain.synthetic.models import ScenarioContext, ScenarioResult
@@ -102,6 +102,40 @@ def generate_rounding_difference(
 
     return ScenarioResult(
         scenario=Scenario.ROUNDING_DIFFERENCE,
+        settlements=[settlement],
+        ledger_records=[ledger],
+        ground_truth={
+            context.settlement_id: context.ledger_id,
+        },
+    )
+
+def generate_date_lag(
+    context: ScenarioContext,
+) -> ScenarioResult:
+    merchant_id = "M001"
+    amount = Decimal("1000.00")
+    settlement_date = context.base_date
+    ledger_date = settlement_date + timedelta(days=2)
+    reference = "UTR100003"
+
+    settlement = create_settlement(
+        settlement_id=context.settlement_id,
+        merchant_id=merchant_id,
+        amount=amount,
+        settlement_date=settlement_date,
+        reference=reference,
+    )
+
+    ledger = create_ledger(
+        ledger_id=context.ledger_id,
+        merchant_id=merchant_id,
+        amount=amount,
+        transaction_date=ledger_date,
+        reference=reference,
+    )
+
+    return ScenarioResult(
+        scenario=Scenario.DATE_LAG,
         settlements=[settlement],
         ledger_records=[ledger],
         ground_truth={

@@ -14,3 +14,6 @@ def test_registered_generator_is_callable():
     generator = SCENARIO_GENERATORS[Scenario.EXACT_MATCH]
 
     assert callable(generator)
+
+def test_date_lag_is_registered():
+    assert Scenario.DATE_LAG in SCENARIO_GENERATORS

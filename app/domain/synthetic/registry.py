@@ -8,7 +8,11 @@ from app.domain.synthetic.scenarios import (
     generate_exact_match,
     generate_rounding_difference,
 )
-
+from app.domain.synthetic.scenarios import (
+    generate_date_lag,
+    generate_exact_match,
+    generate_rounding_difference,
+)
 
 ScenarioGenerator = Callable[
     [ScenarioContext],
@@ -23,4 +27,10 @@ SCENARIO_GENERATORS: dict[Scenario, ScenarioGenerator] = {
 SCENARIO_GENERATORS: dict[Scenario, ScenarioGenerator] = {
     Scenario.EXACT_MATCH: generate_exact_match,
     Scenario.ROUNDING_DIFFERENCE: generate_rounding_difference,
+}
+
+SCENARIO_GENERATORS: dict[Scenario, ScenarioGenerator] = {
+    Scenario.EXACT_MATCH: generate_exact_match,
+    Scenario.ROUNDING_DIFFERENCE: generate_rounding_difference,
+    Scenario.DATE_LAG: generate_date_lag,
 }
