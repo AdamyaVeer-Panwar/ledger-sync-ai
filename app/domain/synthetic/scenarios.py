@@ -210,3 +210,64 @@ def generate_wrong_merchant(
             context.settlement_id: None,
         },
     )
+
+
+def generate_missing_ledger(
+    context: ScenarioContext,
+) -> ScenarioResult:
+    merchant_id = "M001"
+    amount = Decimal("1000.00")
+    settlement_date = context.base_date
+    reference = "UTR100006"
+
+    settlement = create_settlement(
+        settlement_id=context.settlement_id,
+        merchant_id=merchant_id,
+        amount=amount,
+        settlement_date=settlement_date,
+        reference=reference,
+    )
+
+    return ScenarioResult(
+        scenario=Scenario.MISSING_LEDGER,
+        settlements=[settlement],
+        ledger_records=[],
+        ground_truth={
+            context.settlement_id: None,
+        },
+    )
+
+def generate_corrupted_reference(
+    context: ScenarioContext,
+) -> ScenarioResult:
+    merchant_id = "M001"
+    amount = Decimal("1000.00")
+    settlement_date = context.base_date
+
+    settlement_reference = "UTR100007"
+    ledger_reference = "UTR-100007"
+
+    settlement = create_settlement(
+        settlement_id=context.settlement_id,
+        merchant_id=merchant_id,
+        amount=amount,
+        settlement_date=settlement_date,
+        reference=settlement_reference,
+    )
+
+    ledger = create_ledger(
+        ledger_id=context.ledger_id,
+        merchant_id=merchant_id,
+        amount=amount,
+        transaction_date=settlement_date,
+        reference=ledger_reference,
+    )
+
+    return ScenarioResult(
+        scenario=Scenario.CORRUPTED_REFERENCE,
+        settlements=[settlement],
+        ledger_records=[ledger],
+        ground_truth={
+            context.settlement_id: context.ledger_id,
+        },
+    )

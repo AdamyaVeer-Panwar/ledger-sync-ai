@@ -23,3 +23,9 @@ def test_missing_reference_is_registered():
 
 def test_wrong_merchant_is_registered():
     assert Scenario.WRONG_MERCHANT in SCENARIO_GENERATORS
+
+def test_missing_ledger_is_registered():
+    assert Scenario.MISSING_LEDGER in SCENARIO_GENERATORS
+
+def test_corrupted_reference_is_registered():
+    assert Scenario.CORRUPTED_REFERENCE in SCENARIO_GENERATORS

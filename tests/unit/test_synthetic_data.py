@@ -17,6 +17,8 @@ from app.domain.synthetic.scenarios import (
     generate_missing_reference,
     generate_rounding_difference,
     generate_wrong_merchant,
+    generate_missing_ledger,
+    generate_corrupted_reference,
 )
 
 def test_scenario_context():
@@ -165,3 +167,54 @@ def test_wrong_merchant_produces_no_match_ground_truth():
         "S000005": None,
     }
 
+def test_missing_ledger_produces_no_match_ground_truth():
+    context = ScenarioContext(
+        settlement_id="S000006",
+        ledger_id="L000006",
+        rng=random.Random(42),
+        base_date=date(2026, 8, 25),
+    )
+
+    result = generate_missing_ledger(context)
+
+    settlement = result.settlements[0]
+
+    assert result.scenario == Scenario.MISSING_LEDGER
+
+    assert len(result.settlements) == 1
+    assert len(result.ledger_records) == 0
+
+    assert settlement.merchant_id == "M001"
+    assert settlement.amount == Decimal("1000.00")
+    assert settlement.reference == "UTR100006"
+
+    assert result.ground_truth == {
+        "S000006": None,
+    }
+
+def test_corrupted_reference_preserves_ground_truth():
+    context = ScenarioContext(
+        settlement_id="S000007",
+        ledger_id="L000007",
+        rng=random.Random(42),
+        base_date=date(2026, 8, 25),
+    )
+
+    result = generate_corrupted_reference(context)
+
+    settlement = result.settlements[0]
+    ledger = result.ledger_records[0]
+
+    assert result.scenario == Scenario.CORRUPTED_REFERENCE
+
+    assert settlement.amount == ledger.amount
+    assert settlement.merchant_id == ledger.merchant_id
+    assert settlement.settlement_date == ledger.transaction_date
+
+    assert settlement.reference != ledger.reference
+    assert settlement.reference == "UTR100007"
+    assert ledger.reference == "UTR-100007"
+
+    assert result.ground_truth == {
+        "S000007": "L000007",
+    }
