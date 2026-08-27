@@ -20,6 +20,7 @@ from app.domain.synthetic.scenarios import (
     generate_missing_ledger,
     generate_corrupted_reference,
     generate_duplicate,
+    generate_multiple_candidates,
 )
 
 def test_scenario_context():
@@ -251,4 +252,50 @@ def test_duplicate_creates_multiple_ledger_candidates():
 
     assert result.ground_truth == {
         "S000008": "L000008",
+    }
+
+
+def test_multiple_candidates_creates_competing_ledger_records():
+    context = ScenarioContext(
+        settlement_id="S000009",
+        ledger_id="L000009",
+        rng=random.Random(42),
+        base_date=date(2026, 8, 25),
+    )
+
+    result = generate_multiple_candidates(context)
+
+    settlement = result.settlements[0]
+
+    assert result.scenario == Scenario.MULTIPLE_CANDIDATES
+
+    assert len(result.settlements) == 1
+    assert len(result.ledger_records) == 3
+
+    ledger_ids = {
+        ledger.ledger_id
+        for ledger in result.ledger_records
+    }
+
+    assert len(ledger_ids) == 3
+    assert context.ledger_id in ledger_ids
+
+    for ledger in result.ledger_records:
+        assert ledger.merchant_id == settlement.merchant_id
+        assert ledger.amount == settlement.amount
+        assert ledger.reference is None
+
+    assert result.ground_truth == {
+        "S000009": "L000009",
+    }
+
+    transaction_dates = {
+        ledger.transaction_date
+        for ledger in result.ledger_records
+    }
+
+    assert transaction_dates == {
+        date(2026, 8, 24),
+        date(2026, 8, 25),
+        date(2026, 8, 26),
     }

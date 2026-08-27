@@ -314,3 +314,55 @@ def generate_duplicate(
             context.settlement_id: context.ledger_id,
         },
     )
+
+def generate_multiple_candidates(
+    context: ScenarioContext,
+) -> ScenarioResult:
+    merchant_id = "M001"
+    amount = Decimal("1000.00")
+    settlement_date = context.base_date
+
+    settlement = create_settlement(
+        settlement_id=context.settlement_id,
+        merchant_id=merchant_id,
+        amount=amount,
+        settlement_date=settlement_date,
+        reference=None,
+    )
+
+    true_ledger = create_ledger(
+        ledger_id=context.ledger_id,
+        merchant_id=merchant_id,
+        amount=amount,
+        transaction_date=settlement_date,
+        reference=None,
+    )
+
+    previous_ledger = create_ledger(
+        ledger_id=f"L{int(context.ledger_id[1:]) + 1:06d}",
+        merchant_id=merchant_id,
+        amount=amount,
+        transaction_date=settlement_date - timedelta(days=1),
+        reference=None,
+    )
+
+    next_ledger = create_ledger(
+        ledger_id=f"L{int(context.ledger_id[1:]) + 2:06d}",
+        merchant_id=merchant_id,
+        amount=amount,
+        transaction_date=settlement_date + timedelta(days=1),
+        reference=None,
+    )
+
+    return ScenarioResult(
+        scenario=Scenario.MULTIPLE_CANDIDATES,
+        settlements=[settlement],
+        ledger_records=[
+            previous_ledger,
+            true_ledger,
+            next_ledger,
+        ],
+        ground_truth={
+            context.settlement_id: context.ledger_id,
+        },
+    )

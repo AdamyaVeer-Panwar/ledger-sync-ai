@@ -13,6 +13,7 @@ from app.domain.synthetic.scenarios import (
     generate_missing_reference,
     generate_rounding_difference,
     generate_wrong_merchant,
+    generate_multiple_candidates,
 )
 
 ScenarioGenerator = Callable[
@@ -31,4 +32,5 @@ SCENARIO_GENERATORS: dict[Scenario, ScenarioGenerator] = {
     Scenario.MISSING_LEDGER: generate_missing_ledger,
     Scenario.CORRUPTED_REFERENCE: generate_corrupted_reference,
     Scenario.DUPLICATE: generate_duplicate,
+    Scenario.MULTIPLE_CANDIDATES: generate_multiple_candidates,
 }
