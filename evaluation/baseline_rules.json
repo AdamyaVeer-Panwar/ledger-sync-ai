@@ -1,0 +1,24 @@
+{
+  "records_evaluated": 400,
+  "matched": 275,
+  "exceptions": 125,
+  "accuracy": 0.8375,
+  "precision": 1.0,
+  "recall": 0.8088,
+  "false_match_rate": 0.0,
+  "exception_rate": 0.3125,
+  "automation_rate": 0.6875,
+  "throughput_records_per_second": 7619.05,
+  "elapsed_seconds": 0.0525,
+  "decision_breakdown": {
+    "MATCHED_RULE": 275,
+    "HUMAN_REVIEW": 35,
+    "NO_MATCH": 90
+  },
+  "rule_source_breakdown": {
+    "rule_exact_reference_amount": 175,
+    "rule_exact_amount_merchant_date": 95,
+    "rule_amount_tolerance_date_window": 40,
+    "rule_matcher": 90
+  }
+}

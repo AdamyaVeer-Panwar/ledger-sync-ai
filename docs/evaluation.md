@@ -357,3 +357,45 @@ The system must be measured before conclusions about AI effectiveness are made.
 The goal is not to prove that the LLM is useful.
 
 The goal is to **measure when deterministic logic is sufficient, when AI adds value, and when the system should refuse to make a decision.**
+
+
+## Rules-Only Baseline — 2026-08-29
+
+Dataset:
+- 400 settlement records
+- Ground truth generated during Day 1
+- Deterministic RuleMatcher
+- In-memory candidate universe filtered by currency
+- No LLM
+- No external API calls
+- No PostgreSQL candidate retrieval
+
+| Metric | Result |
+|---|---:|
+| Records evaluated | 400 |
+| Matched | 275 |
+| Exceptions | 125 |
+| Accuracy | 83.75% |
+| Precision | 100.00% |
+| Recall | 80.88% |
+| False-match rate | 0.00% |
+| Exception rate | 31.25% |
+| Automation rate | 68.75% |
+| Throughput | 4,107.94 records/sec |
+| Elapsed time | 0.0974 sec |
+
+### Interpretation
+
+The deterministic baseline prioritizes safety over aggressive automation.
+
+The system achieved 100% precision and 0% false-match rate on the evaluation dataset, while automatically resolving 68.75% of settlements.
+
+The remaining 31.25% were treated as exceptions rather than being force-matched.
+
+This establishes the rules-only baseline against which later candidate-retrieval and AI improvements will be evaluated.
+
+### Benchmark boundary
+
+The reported throughput measures the Day-3 in-memory evaluation setup. It is not a production-scale database retrieval benchmark.
+
+Day 4 introduces indexed PostgreSQL candidate retrieval and measures search performance independently at larger ledger volumes.
