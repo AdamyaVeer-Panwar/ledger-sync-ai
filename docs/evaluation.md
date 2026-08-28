@@ -399,3 +399,32 @@ This establishes the rules-only baseline against which later candidate-retrieval
 The reported throughput measures the Day-3 in-memory evaluation setup. It is not a production-scale database retrieval benchmark.
 
 Day 4 introduces indexed PostgreSQL candidate retrieval and measures search performance independently at larger ledger volumes.
+
+## Candidate Retrieval Benchmark — Day 4
+
+The candidate retrieval layer was benchmarked using synthetic PostgreSQL ledger datasets.
+
+| Dataset | Query Time | Candidates |
+|---:|---:|---:|
+| 10,000 | 1.136 ms | 20 |
+| 100,000 | 1.078 ms | 20 |
+
+### PostgreSQL execution plan
+
+The 100,000-record query used:
+
+`ix_ledger_merchant_amount`
+
+The query returned 20 actual rows and completed in 0.241 ms according to `EXPLAIN (ANALYZE, BUFFERS)`.
+
+This demonstrates that candidate retrieval is bounded and database-backed rather than requiring a full ledger scan by the reasoning layer.
+
+### Architecture
+
+Settlement
+→ CandidateRetriever
+→ Indexed PostgreSQL query
+→ bounded candidate set
+→ RuleMatcher
+
+The retrieval benchmark measures database candidate generation independently from reconciliation decision logic.
