@@ -5,6 +5,8 @@ description = "AI-assisted financial reconciliation controller"
 requires-python = ">=3.10"
 dependencies = [
     "pydantic>=2.0,<3.0",
+    "openai",
+    "httpx",
 ]
 
 [project.optional-dependencies]
