@@ -23,109 +23,158 @@ class PolicyDecision:
 
 
 class PolicyEngine:
-    def __init__(
-        self,
-        *,
-        high_threshold: float,
-        medium_threshold: float,
-    ) -> None:
-        if not 0.0 <= medium_threshold <= 1.0:
-            raise ValueError(
-                "medium_threshold must be between 0 and 1"
-            )
+    """
+    Deterministic authorization layer for reconciliation decisions.
 
-        if not 0.0 <= high_threshold <= 1.0:
-            raise ValueError(
-                "high_threshold must be between 0 and 1"
-            )
+    The policy does not trust raw LLM confidence as authorization.
+    It evaluates the evidence state produced by EvidenceFusion.
 
-        if medium_threshold > high_threshold:
-            raise ValueError(
-                "medium_threshold cannot exceed "
-                "high_threshold"
-            )
+    Policy:
 
-        self.high_threshold = high_threshold
-        self.medium_threshold = medium_threshold
+        STRONG_AGREEMENT
+            -> AUTO_MATCH
+
+        LLM_SUPPORTED
+            -> AUTO_MATCH
+
+        AMBIGUOUS
+            -> HUMAN_REVIEW
+
+        CONFLICT
+            -> HUMAN_REVIEW
+
+        No candidates / no trustworthy evidence
+            -> NO_MATCH
+    """
 
     def evaluate(
         self,
         fusion_result: EvidenceFusionResult,
     ) -> PolicyDecision:
 
-        confidence = fusion_result.confidence
-
         # ---------------------------------------------------------
-        # Conflict is never auto-match.
-        # ---------------------------------------------------------
-
-        if (
-            fusion_result.agreement
-            == FusionAgreement.CONFLICT
-        ):
-            return PolicyDecision(
-                action=PolicyAction.HUMAN_REVIEW,
-                candidate_ids=list(
-                    fusion_result.candidate_ids
-                ),
-                confidence=confidence,
-                evidence_codes=list(
-                    fusion_result.evidence_codes
-                ),
-                reason="rules and LLM evidence conflict",
-            )
-
-        # ---------------------------------------------------------
-        # Strong agreement can be auto-matched when confidence
-        # clears the high threshold.
+        # Strong deterministic + AI agreement.
         # ---------------------------------------------------------
 
         if (
             fusion_result.agreement
             == FusionAgreement.STRONG_AGREEMENT
-            and confidence >= self.high_threshold
         ):
             return PolicyDecision(
                 action=PolicyAction.AUTO_MATCH,
                 candidate_ids=list(
                     fusion_result.candidate_ids
                 ),
-                confidence=confidence,
+                confidence=fusion_result.confidence,
                 evidence_codes=list(
                     fusion_result.evidence_codes
                 ),
-                reason="strong agreement above high threshold",
+                reason=(
+                    "deterministic and AI evidence "
+                    "strongly agree"
+                ),
             )
 
         # ---------------------------------------------------------
-        # Medium confidence → human review.
+        # LLM-supported result.
+        #
+        # This state is only produced when the LLM proposal has
+        # already passed deterministic verification.
         # ---------------------------------------------------------
 
-        if confidence >= self.medium_threshold:
+        if (
+            fusion_result.agreement
+            == FusionAgreement.LLM_SUPPORTED
+        ):
+            return PolicyDecision(
+                action=PolicyAction.AUTO_MATCH,
+                candidate_ids=list(
+                    fusion_result.candidate_ids
+                ),
+                confidence=fusion_result.confidence,
+                evidence_codes=list(
+                    fusion_result.evidence_codes
+                ),
+                reason=(
+                    "LLM proposal passed deterministic "
+                    "verification"
+                ),
+            )
+
+        # ---------------------------------------------------------
+        # Explicit ambiguity.
+        # ---------------------------------------------------------
+
+        if (
+            fusion_result.agreement
+            == FusionAgreement.AMBIGUOUS
+        ):
             return PolicyDecision(
                 action=PolicyAction.HUMAN_REVIEW,
                 candidate_ids=list(
                     fusion_result.candidate_ids
                 ),
-                confidence=confidence,
+                confidence=fusion_result.confidence,
                 evidence_codes=list(
                     fusion_result.evidence_codes
                 ),
-                reason="confidence requires human review",
+                reason=(
+                    "multiple plausible candidates "
+                    "remain unresolved"
+                ),
             )
 
         # ---------------------------------------------------------
-        # Low confidence → no match.
+        # Conflict.
+        #
+        # Never auto-match a disagreement or failed verification.
+        # ---------------------------------------------------------
+
+        if (
+            fusion_result.agreement
+            == FusionAgreement.CONFLICT
+        ):
+            if not fusion_result.candidate_ids:
+                return PolicyDecision(
+                    action=PolicyAction.NO_MATCH,
+                    candidate_ids=[],
+                    confidence=0.0,
+                    evidence_codes=list(
+                        fusion_result.evidence_codes
+                    ),
+                    reason=(
+                        "no trustworthy reconciliation "
+                        "candidate was established"
+                    ),
+                )
+
+            return PolicyDecision(
+                action=PolicyAction.HUMAN_REVIEW,
+                candidate_ids=list(
+                    fusion_result.candidate_ids
+                ),
+                confidence=0.0,
+                evidence_codes=list(
+                    fusion_result.evidence_codes
+                ),
+                reason=(
+                    "reconciliation evidence conflicts "
+                    "or could not be verified"
+                ),
+            )
+
+        # ---------------------------------------------------------
+        # Defensive fallback.
         # ---------------------------------------------------------
 
         return PolicyDecision(
-            action=PolicyAction.NO_MATCH,
+            action=PolicyAction.HUMAN_REVIEW,
             candidate_ids=list(
                 fusion_result.candidate_ids
             ),
-            confidence=confidence,
+            confidence=fusion_result.confidence,
             evidence_codes=list(
                 fusion_result.evidence_codes
             ),
-            reason="confidence below medium threshold",
+            reason="unrecognized fusion state",
         )

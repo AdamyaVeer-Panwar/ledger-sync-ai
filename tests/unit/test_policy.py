@@ -10,26 +10,28 @@ from app.domain.reconciliation.policy import (
 
 def make_fusion_result(
     *,
-    agreement,
-    confidence,
+    agreement: FusionAgreement,
+    confidence: float,
+    candidate_ids: list[str] | None = None,
 ):
     return EvidenceFusionResult(
-        candidate_ids=["L001"],
+        candidate_ids=(
+            candidate_ids
+            if candidate_ids is not None
+            else ["L001"]
+        ),
         agreement=agreement,
         confidence=confidence,
         evidence_codes=["test_evidence"],
     )
 
 
-def test_high_confidence_strong_agreement_auto_matches():
-    policy = PolicyEngine(
-        high_threshold=0.90,
-        medium_threshold=0.70,
-    )
+def test_strong_agreement_auto_matches():
+    policy = PolicyEngine()
 
     result = make_fusion_result(
         agreement=FusionAgreement.STRONG_AGREEMENT,
-        confidence=0.95,
+        confidence=0.50,
     )
 
     decision = policy.evaluate(result)
@@ -38,27 +40,8 @@ def test_high_confidence_strong_agreement_auto_matches():
     assert decision.candidate_ids == ["L001"]
 
 
-def test_medium_confidence_requires_human_review():
-    policy = PolicyEngine(
-        high_threshold=0.90,
-        medium_threshold=0.70,
-    )
-
-    result = make_fusion_result(
-        agreement=FusionAgreement.LLM_SUPPORTED,
-        confidence=0.80,
-    )
-
-    decision = policy.evaluate(result)
-
-    assert decision.action == PolicyAction.HUMAN_REVIEW
-
-
-def test_low_confidence_returns_no_match():
-    policy = PolicyEngine(
-        high_threshold=0.90,
-        medium_threshold=0.70,
-    )
+def test_verified_llm_supported_result_auto_matches():
+    policy = PolicyEngine()
 
     result = make_fusion_result(
         agreement=FusionAgreement.LLM_SUPPORTED,
@@ -67,34 +50,71 @@ def test_low_confidence_returns_no_match():
 
     decision = policy.evaluate(result)
 
-    assert decision.action == PolicyAction.NO_MATCH
+    assert decision.action == PolicyAction.AUTO_MATCH
 
 
-def test_conflict_never_auto_matches():
-    policy = PolicyEngine(
-        high_threshold=0.90,
-        medium_threshold=0.70,
-    )
+def test_ambiguous_result_requires_human_review():
+    policy = PolicyEngine()
 
     result = make_fusion_result(
-        agreement=FusionAgreement.CONFLICT,
-        confidence=1.0,
+        agreement=FusionAgreement.AMBIGUOUS,
+        confidence=0.95,
+        candidate_ids=[
+            "L001",
+            "L002",
+        ],
     )
 
     decision = policy.evaluate(result)
 
     assert decision.action == PolicyAction.HUMAN_REVIEW
+    assert decision.candidate_ids == [
+        "L001",
+        "L002",
+    ]
 
 
-def test_invalid_thresholds_are_rejected():
-    try:
-        PolicyEngine(
-            high_threshold=0.60,
-            medium_threshold=0.80,
-        )
-    except ValueError:
-        return
+def test_conflict_with_candidate_requires_human_review():
+    policy = PolicyEngine()
 
-    raise AssertionError(
-        "Expected invalid threshold configuration"
+    result = make_fusion_result(
+        agreement=FusionAgreement.CONFLICT,
+        confidence=1.0,
+        candidate_ids=["L001"],
     )
+
+    decision = policy.evaluate(result)
+
+    assert decision.action == PolicyAction.HUMAN_REVIEW
+    assert decision.confidence == 0.0
+
+
+def test_conflict_without_candidate_returns_no_match():
+    policy = PolicyEngine()
+
+    result = make_fusion_result(
+        agreement=FusionAgreement.CONFLICT,
+        confidence=0.0,
+        candidate_ids=[],
+    )
+
+    decision = policy.evaluate(result)
+
+    assert decision.action == PolicyAction.NO_MATCH
+    assert decision.candidate_ids == []
+    assert decision.confidence == 0.0
+
+
+def test_high_llm_confidence_cannot_override_conflict():
+    policy = PolicyEngine()
+
+    result = make_fusion_result(
+        agreement=FusionAgreement.CONFLICT,
+        confidence=1.0,
+        candidate_ids=["L001"],
+    )
+
+    decision = policy.evaluate(result)
+
+    assert decision.action == PolicyAction.HUMAN_REVIEW
+    assert decision.action != PolicyAction.AUTO_MATCH
