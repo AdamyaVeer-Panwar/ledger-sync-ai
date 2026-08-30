@@ -29,9 +29,20 @@ class LedgerRecord(BaseModel):
 class MatchDecision(BaseModel):
     settlement_id: str
     status: MatchStatus
-    ledger_id: str | None = None
-    confidence: float = Field(ge=0.0, le=1.0)
-    evidence: list[str] = Field(default_factory=list)
+
+    candidate_ids: list[str] = Field(
+        default_factory=list
+    )
+
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    evidence: list[str] = Field(
+        default_factory=list
+    )
+
     source: str
 
 

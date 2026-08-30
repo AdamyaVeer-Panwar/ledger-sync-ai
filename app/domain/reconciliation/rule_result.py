@@ -23,26 +23,19 @@ class RuleMatchResult:
 def to_rule_match_result(
     decision: MatchDecision,
 ) -> RuleMatchResult:
-    """
-    Convert the existing MatchDecision into the Day 6
-    RuleMatchResult contract.
-    """
-
-    candidate_ids = (
-        [decision.ledger_id]
-        if decision.ledger_id is not None
-        else []
-    )
-
     is_confident = (
         decision.status == MatchStatus.MATCHED_RULE
-        and decision.ledger_id is not None
+        and len(decision.candidate_ids) == 1
     )
 
     return RuleMatchResult(
         status=decision.status,
-        candidate_ids=candidate_ids,
+        candidate_ids=list(
+            decision.candidate_ids
+        ),
         confidence=decision.confidence,
-        evidence_codes=list(decision.evidence),
+        evidence_codes=list(
+            decision.evidence
+        ),
         is_confident=is_confident,
     )

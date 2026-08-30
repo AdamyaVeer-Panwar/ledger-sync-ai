@@ -1,9 +1,17 @@
 from datetime import date
 from decimal import Decimal
 
-from app.domain.enums import LedgerEntryType, MatchStatus
-from app.domain.models import LedgerRecord, SettlementRecord
-from app.domain.reconciliation.rule_matcher import RuleMatcher
+from app.domain.enums import (
+    LedgerEntryType,
+    MatchStatus,
+)
+from app.domain.models import (
+    LedgerRecord,
+    SettlementRecord,
+)
+from app.domain.reconciliation.rule_matcher import (
+    RuleMatcher,
+)
 
 
 def make_settlement(
@@ -55,7 +63,7 @@ def test_exact_reference_and_amount_match():
     )
 
     assert decision.status == MatchStatus.MATCHED_RULE
-    assert decision.ledger_id == "L000001"
+    assert decision.candidate_ids == ["L000001"]
     assert decision.confidence == 1.0
     assert decision.source == "rule_exact_reference_amount"
     assert decision.evidence == [
@@ -81,9 +89,11 @@ def test_exact_amount_merchant_and_date_match():
     )
 
     assert decision.status == MatchStatus.MATCHED_RULE
-    assert decision.ledger_id == "L000001"
+    assert decision.candidate_ids == ["L000001"]
     assert decision.confidence == 0.95
-    assert decision.source == "rule_exact_amount_merchant_date"
+    assert decision.source == (
+        "rule_exact_amount_merchant_date"
+    )
     assert decision.evidence == [
         "amount_exact",
         "merchant_exact",
@@ -112,9 +122,11 @@ def test_amount_tolerance_and_date_window_match():
     )
 
     assert decision.status == MatchStatus.MATCHED_RULE
-    assert decision.ledger_id == "L000001"
+    assert decision.candidate_ids == ["L000001"]
     assert decision.confidence == 0.85
-    assert decision.source == "rule_amount_tolerance_date_window"
+    assert decision.source == (
+        "rule_amount_tolerance_date_window"
+    )
     assert decision.evidence == [
         "amount_within_tolerance",
         "merchant_exact",
@@ -139,9 +151,10 @@ def test_wrong_merchant_returns_no_match():
     )
 
     assert decision.status == MatchStatus.NO_MATCH
-    assert decision.ledger_id is None
+    assert decision.candidate_ids == []
     assert decision.confidence == 0.0
     assert decision.source == "rule_matcher"
+    assert decision.evidence == ["no_match"]
 
 
 def test_duplicate_candidates_return_human_review():
@@ -163,8 +176,14 @@ def test_duplicate_candidates_return_human_review():
     )
 
     assert decision.status == MatchStatus.HUMAN_REVIEW
-    assert decision.ledger_id is None
+    assert decision.candidate_ids == [
+        "L000001",
+        "L000002",
+    ]
     assert decision.confidence == 0.0
+    assert decision.source == (
+        "rule_exact_reference_amount"
+    )
     assert "multiple_candidates" in decision.evidence
 
 
@@ -185,9 +204,11 @@ def test_missing_reference_can_match_by_amount_merchant_and_date():
     )
 
     assert decision.status == MatchStatus.MATCHED_RULE
-    assert decision.ledger_id == "L000001"
+    assert decision.candidate_ids == ["L000001"]
     assert decision.confidence == 0.95
-    assert decision.source == "rule_exact_amount_merchant_date"
+    assert decision.source == (
+        "rule_exact_amount_merchant_date"
+    )
 
 
 def test_ambiguous_tolerance_candidates_return_human_review():
@@ -217,8 +238,14 @@ def test_ambiguous_tolerance_candidates_return_human_review():
     )
 
     assert decision.status == MatchStatus.HUMAN_REVIEW
-    assert decision.ledger_id is None
+    assert decision.candidate_ids == [
+        "L000001",
+        "L000002",
+    ]
     assert decision.confidence == 0.0
+    assert decision.source == (
+        "rule_amount_tolerance_date_window"
+    )
     assert "multiple_candidates" in decision.evidence
 
 
@@ -233,7 +260,7 @@ def test_no_candidates_returns_no_match():
     )
 
     assert decision.status == MatchStatus.NO_MATCH
-    assert decision.ledger_id is None
+    assert decision.candidate_ids == []
     assert decision.confidence == 0.0
     assert decision.source == "rule_matcher"
     assert decision.evidence == [
@@ -260,9 +287,11 @@ def test_normalized_reference_match():
     )
 
     assert decision.status == MatchStatus.MATCHED_RULE
-    assert decision.ledger_id == "L000001"
+    assert decision.candidate_ids == ["L000001"]
     assert decision.confidence == 0.90
-    assert decision.source == "rule_normalized_reference_amount"
+    assert decision.source == (
+        "rule_normalized_reference_amount"
+    )
     assert decision.evidence == [
         "reference_normalized",
         "amount_exact",

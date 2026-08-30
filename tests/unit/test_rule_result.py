@@ -69,7 +69,7 @@ def test_adapter_marks_rule_match_as_confident():
     decision = MatchDecision(
         settlement_id="S001",
         status=MatchStatus.MATCHED_RULE,
-        ledger_id="L001",
+        candidate_ids=["L001"],
         confidence=1.0,
         evidence=["amount_exact"],
         source="rule_exact",
@@ -105,7 +105,7 @@ def test_adapter_converts_rule_match():
     decision = MatchDecision(
         settlement_id="S001",
         status=MatchStatus.MATCHED_RULE,
-        ledger_id="L001",
+        candidate_ids=["L001"],
         confidence=1.0,
         evidence=[
             "reference_exact",

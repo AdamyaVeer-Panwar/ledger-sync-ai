@@ -195,12 +195,12 @@ class RuleMatcher:
         """
 
         if len(candidates) == 1:
-            ledger = candidates[0]
-
             return MatchDecision(
                 settlement_id=settlement.settlement_id,
                 status=MatchStatus.MATCHED_RULE,
-                ledger_id=ledger.ledger_id,
+                candidate_ids=[
+                candidates[0].ledger_id
+                ],
                 confidence=confidence,
                 evidence=evidence,
                 source=source,
@@ -210,10 +210,15 @@ class RuleMatcher:
             return MatchDecision(
                 settlement_id=settlement.settlement_id,
                 status=MatchStatus.HUMAN_REVIEW,
-                ledger_id=None,
+                candidate_ids=[
+                ledger.ledger_id
+                for ledger in candidates
+                ],
                 confidence=0.0,
-                evidence=evidence + ["multiple_candidates"],
-                source=source,
+                evidence=evidence + [
+                "multiple_candidates"
+                ],
+                    source=source,
             )
 
         return None
@@ -230,7 +235,7 @@ class RuleMatcher:
         return MatchDecision(
             settlement_id=settlement.settlement_id,
             status=MatchStatus.NO_MATCH,
-            ledger_id=None,
+            candidate_ids=[],
             confidence=0.0,
             evidence=evidence,
             source=source,
