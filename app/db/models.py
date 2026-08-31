@@ -27,14 +27,24 @@ class ReconciliationRun(Base):
         primary_key=True,
         autoincrement=True,
     )
+
+    idempotency_key: Mapped[str] = mapped_column(
+        String(128),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
     status: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
     )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
     )
+
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,

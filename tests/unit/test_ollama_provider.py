@@ -346,3 +346,166 @@ async def test_ollama_provider_supports_multiple_candidate_ids(
         "L000297",
         "L000298",
     ]
+
+@pytest.mark.asyncio
+async def test_ollama_provider_rejects_confidence_outside_range(
+    monkeypatch,
+):
+    response = FakeResponse(
+        json_data={
+            "response": (
+                '{"decision":"MATCH",'
+                '"candidate_ids":["L001"],'
+                '"confidence":1.5,'
+                '"evidence_codes":[]}'
+            ),
+            "prompt_eval_count": 100,
+            "eval_count": 10,
+        }
+    )
+
+    def fake_client(*args, **kwargs):
+        return FakeAsyncClient(
+            response=response,
+        )
+
+    monkeypatch.setattr(
+        "app.infrastructure.llm.ollama_provider.httpx.AsyncClient",
+        fake_client,
+    )
+
+    resolver = OllamaResolver(
+        model="qwen2.5:3b",
+    )
+
+    with pytest.raises(
+        LLMProviderError,
+        match="invalid structured output",
+    ):
+        await resolver.resolve(
+            make_settlement(),
+            [make_ledger()],
+        )
+
+
+@pytest.mark.asyncio
+async def test_ollama_provider_rejects_match_without_candidates(
+    monkeypatch,
+):
+    response = FakeResponse(
+        json_data={
+            "response": (
+                '{"decision":"MATCH",'
+                '"candidate_ids":[],'
+                '"confidence":0.8,'
+                '"evidence_codes":[]}'
+            ),
+            "prompt_eval_count": 100,
+            "eval_count": 10,
+        }
+    )
+
+    def fake_client(*args, **kwargs):
+        return FakeAsyncClient(
+            response=response,
+        )
+
+    monkeypatch.setattr(
+        "app.infrastructure.llm.ollama_provider.httpx.AsyncClient",
+        fake_client,
+    )
+
+    resolver = OllamaResolver(
+        model="qwen2.5:3b",
+    )
+
+    with pytest.raises(
+        LLMProviderError,
+        match="invalid structured output",
+    ):
+        await resolver.resolve(
+            make_settlement(),
+            [make_ledger()],
+        )
+
+
+@pytest.mark.asyncio
+async def test_ollama_provider_rejects_no_match_with_candidates(
+    monkeypatch,
+):
+    response = FakeResponse(
+        json_data={
+            "response": (
+                '{"decision":"NO_MATCH",'
+                '"candidate_ids":["L001"],'
+                '"confidence":0.2,'
+                '"evidence_codes":[]}'
+            ),
+            "prompt_eval_count": 100,
+            "eval_count": 10,
+        }
+    )
+
+    def fake_client(*args, **kwargs):
+        return FakeAsyncClient(
+            response=response,
+        )
+
+    monkeypatch.setattr(
+        "app.infrastructure.llm.ollama_provider.httpx.AsyncClient",
+        fake_client,
+    )
+
+    resolver = OllamaResolver(
+        model="qwen2.5:3b",
+    )
+
+    with pytest.raises(
+        LLMProviderError,
+        match="invalid structured output",
+    ):
+        await resolver.resolve(
+            make_settlement(),
+            [make_ledger()],
+        )
+
+
+@pytest.mark.asyncio
+async def test_ollama_provider_rejects_malformed_structured_json(
+    monkeypatch,
+):
+    response = FakeResponse(
+        json_data={
+            "response": (
+                '{"decision":"MATCH",'
+                '"candidate_ids":["L001"],'
+                '"confidence":"very-high",'
+                '"evidence_codes":[]}'
+            ),
+            "prompt_eval_count": 100,
+            "eval_count": 10,
+        }
+    )
+
+    def fake_client(*args, **kwargs):
+        return FakeAsyncClient(
+            response=response,
+        )
+
+    monkeypatch.setattr(
+        "app.infrastructure.llm.ollama_provider.httpx.AsyncClient",
+        fake_client,
+    )
+
+    resolver = OllamaResolver(
+        model="qwen2.5:3b",
+    )
+
+    with pytest.raises(
+        LLMProviderError,
+        match="invalid structured output",
+    ):
+        await resolver.resolve(
+            make_settlement(),
+            [make_ledger()],
+        )

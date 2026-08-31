@@ -13,6 +13,7 @@ from app.db.models import MatchResultORM
 async def test_insert_settlement_record():
     async with SessionFactory() as session:
         run = ReconciliationRun(
+            idempotency_key="TEST-RUN-DB-INSERT",
             status="PENDING",
             created_at=datetime.now(timezone.utc),
         )
@@ -86,6 +87,7 @@ async def test_settlement_requires_valid_run():
 async def test_settlement_id_must_be_unique():
     async with SessionFactory() as session:
         run = ReconciliationRun(
+            idempotency_key="TEST-RUN-DB-INSERT",
             status="PENDING",
             created_at=datetime.now(timezone.utc),
         )
@@ -127,6 +129,7 @@ async def test_settlement_id_must_be_unique():
 async def test_settlement_amount_must_be_positive():
     async with SessionFactory() as session:
         run = ReconciliationRun(
+            idempotency_key="TEST-RUN-DB-INSERT",
             status="PENDING",
             created_at=datetime.now(timezone.utc),
         )
@@ -154,6 +157,7 @@ async def test_settlement_amount_must_be_positive():
 async def test_match_confidence_must_be_between_zero_and_one():
     async with SessionFactory() as session:
         run = ReconciliationRun(
+            idempotency_key="TEST-RUN-DB-INSERT",
             status="PENDING",
             created_at=datetime.now(timezone.utc),
         )
@@ -193,6 +197,7 @@ async def test_match_confidence_must_be_between_zero_and_one():
 async def test_money_uses_decimal_precision():
     async with SessionFactory() as session:
         run = ReconciliationRun(
+            idempotency_key="TEST-RUN-DB-INSERT",
             status="PENDING",
             created_at=datetime.now(timezone.utc),
         )

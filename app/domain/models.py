@@ -48,8 +48,11 @@ class MatchDecision(BaseModel):
 
 class ReconciliationRun(BaseModel):
     run_id: str
+    idempotency_key: str
+
     started_at: datetime
     completed_at: datetime | None = None
+
     total_records: int = Field(ge=0)
     matched_records: int = Field(ge=0)
     exception_records: int = Field(ge=0)

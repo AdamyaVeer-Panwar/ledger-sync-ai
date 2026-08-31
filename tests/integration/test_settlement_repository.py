@@ -14,6 +14,7 @@ async def test_create_and_get_settlement():
         repository = SettlementRepository(session)
 
         run = ReconciliationRun(
+            idempotency_key="TEST-SETTLEMENT-REPOSITORY-001",
             status="PENDING",
             created_at=datetime.now(timezone.utc),
         )

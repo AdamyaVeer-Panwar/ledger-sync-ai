@@ -16,6 +16,8 @@ from app.domain.reconciliation.rule_result import (
 )
 
 
+
+
 def make_rule_result(
     *,
     status: MatchStatus,
@@ -245,3 +247,61 @@ def test_fusion_detects_ambiguity():
         "L001",
         "L002",
     ]
+
+def test_deterministic_ambiguity_cannot_be_overridden_by_llm():
+    fusion = EvidenceFusion()
+
+    rule_result = RuleMatchResult(
+        status=MatchStatus.HUMAN_REVIEW,
+        candidate_ids=[
+            "L001",
+            "L002",
+        ],
+        confidence=0.0,
+        evidence_codes=[
+            "multiple_candidates",
+        ],
+        is_confident=False,
+    )
+
+    ai_result = AIResolution(
+        decision=AIResolutionDecision.MATCH,
+        candidate_ids=[
+            "L001",
+        ],
+        confidence=0.99,
+        evidence_codes=[
+            "llm_selected_candidate",
+        ],
+    )
+
+    verification_result = LLMVerificationResult(
+        status=VerificationStatus.VERIFIED,
+        candidate_ids=[
+            "L001",
+        ],
+        evidence_codes=[
+            "candidate_ids_valid",
+        ],
+        reason="candidate is individually valid",
+    )
+
+    result = fusion.fuse(
+        rule_result,
+        ai_result,
+        verification_result,
+    )
+
+    assert result.agreement == FusionAgreement.AMBIGUOUS
+
+    assert result.candidate_ids == [
+        "L001",
+        "L002",
+    ]
+
+    assert result.confidence == 0.0
+
+    assert (
+        "deterministic_ambiguity"
+        in result.evidence_codes
+    )
