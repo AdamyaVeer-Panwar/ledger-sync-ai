@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from app.domain.enums import MatchStatus
 from app.domain.models import LedgerRecord, SettlementRecord
 from app.domain.reconciliation.evidence_fusion import (
     EvidenceFusion,
@@ -34,20 +35,37 @@ class HybridResolver:
             ↓
         Rule Matcher
             ↓
-        confident?
-          ├── YES → AUTO_MATCH
+        deterministic decision?
+          ├── confident
+          │      ↓
+          │   AUTO_MATCH
           │
-          └── NO
-               ↓
-              LLM
-               ↓
+          ├── deterministic ambiguity
+          │      ↓
+          │   HUMAN_REVIEW
+          │      ↓
+          │   no LLM call
+          │
+          └── insufficient evidence
+                 ↓
+                LLM
+                 ↓
           LLM Verification
-               ↓
+                 ↓
           Evidence Fusion
-               ↓
+                 ↓
           Policy Engine
-               ↓
-        HybridResolution
+                 ↓
+          HybridResolution
+
+    Design principle:
+
+        The LLM is only used when deterministic reconciliation
+        cannot safely establish the outcome.
+
+        If deterministic rules already establish ambiguity,
+        asking the LLM to choose one candidate would not provide
+        sufficient authorization evidence.
     """
 
     def __init__(
@@ -73,10 +91,6 @@ class HybridResolver:
     ) -> HybridResolution:
         # ---------------------------------------------------------
         # 1. Retrieve bounded candidates.
-        #
-        # Candidate retrieval is infrastructure work. The returned
-        # ORM records are converted into domain LedgerRecord objects
-        # before entering the domain reconciliation logic.
         # ---------------------------------------------------------
 
         orm_candidates = (
@@ -113,8 +127,8 @@ class HybridResolver:
         # ---------------------------------------------------------
         # 3. Strong deterministic result.
         #
-        # Do not invoke the LLM when deterministic evidence is
-        # already sufficient.
+        # Deterministic evidence is sufficient. The LLM is not
+        # invoked.
         # ---------------------------------------------------------
 
         if rule_result.is_confident:
@@ -131,12 +145,45 @@ class HybridResolver:
                 reason=(
                     "confident deterministic rule match"
                 ),
+                llm_invoked=False,
             )
 
         # ---------------------------------------------------------
-        # 4. Rules are insufficient.
+        # 4. Deterministic ambiguity short-circuit.
         #
-        # Ask the LLM to reason over the bounded candidate set.
+        # Multiple equally plausible candidates cannot be safely
+        # distinguished by the existing deterministic evidence.
+        #
+        # Do not ask the LLM to arbitrarily choose one.
+        # Escalate directly to human review.
+        # ---------------------------------------------------------
+
+        if (
+            rule_result.status == MatchStatus.HUMAN_REVIEW
+            and "multiple_candidates"
+            in rule_result.evidence_codes
+        ):
+            return HybridResolution(
+                settlement_id=settlement.settlement_id,
+                action=PolicyAction.HUMAN_REVIEW,
+                candidate_ids=list(
+                    rule_result.candidate_ids
+                ),
+                confidence=0.0,
+                evidence_codes=list(
+                    rule_result.evidence_codes
+                ),
+                reason=(
+                    "deterministic ambiguity requires "
+                    "human review"
+                ),
+                llm_invoked=False,
+            )
+
+        # ---------------------------------------------------------
+        # 5. Rules are insufficient.
+        #
+        # This is the point where the LLM is actually invoked.
         # ---------------------------------------------------------
 
         ai_result = await self.llm_resolver.resolve(
@@ -145,11 +192,7 @@ class HybridResolver:
         )
 
         # ---------------------------------------------------------
-        # 5. Deterministically verify the LLM proposal.
-        #
-        # The LLM is allowed to propose.
-        # The verifier determines whether that proposal is supported
-        # by objective evidence.
+        # 6. Deterministically verify the LLM proposal.
         # ---------------------------------------------------------
 
         verification_result = self.verifier.verify(
@@ -159,7 +202,7 @@ class HybridResolver:
         )
 
         # ---------------------------------------------------------
-        # 6. Fuse rule evidence + AI evidence + verification.
+        # 7. Fuse rule evidence + AI evidence + verification.
         # ---------------------------------------------------------
 
         fusion_result = self.fusion.fuse(
@@ -169,7 +212,7 @@ class HybridResolver:
         )
 
         # ---------------------------------------------------------
-        # 7. Policy is the final authorization boundary.
+        # 8. Policy is the final authorization boundary.
         # ---------------------------------------------------------
 
         policy_decision = self.policy.evaluate(
@@ -187,6 +230,7 @@ class HybridResolver:
                 policy_decision.evidence_codes
             ),
             reason=policy_decision.reason,
+            llm_invoked=True,
         )
 
     @staticmethod
@@ -194,10 +238,11 @@ class HybridResolver:
         ledger,
     ) -> LedgerRecord:
         """
-        Convert persistence-layer LedgerORM into a domain LedgerRecord.
+        Convert persistence-layer LedgerORM into a domain
+        LedgerRecord.
 
-        Domain reconciliation logic must not operate directly on ORM
-        objects.
+        Domain reconciliation logic must not operate directly
+        on ORM objects.
         """
 
         return LedgerRecord(

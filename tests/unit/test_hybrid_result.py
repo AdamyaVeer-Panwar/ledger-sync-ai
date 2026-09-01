@@ -17,12 +17,14 @@ def test_hybrid_resolution_represents_auto_match():
             "reference_exact",
         ],
         reason="strong deterministic agreement",
+        llm_invoked=False,
     )
 
     assert result.settlement_id == "S001"
     assert result.action == PolicyAction.AUTO_MATCH
     assert result.candidate_ids == ["L001"]
     assert result.confidence == 0.98
+    assert result.llm_invoked is False
 
 
 def test_hybrid_resolution_represents_human_review():
@@ -35,6 +37,7 @@ def test_hybrid_resolution_represents_human_review():
             "multiple_plausible_candidates",
         ],
         reason="insufficient evidence for auto-match",
+        llm_invoked=False,
     )
 
     assert result.action == PolicyAction.HUMAN_REVIEW
@@ -42,6 +45,7 @@ def test_hybrid_resolution_represents_human_review():
         "L001",
         "L002",
     ]
+    assert result.llm_invoked is False
 
 
 def test_hybrid_resolution_represents_no_match():
@@ -50,9 +54,32 @@ def test_hybrid_resolution_represents_no_match():
         action=PolicyAction.NO_MATCH,
         candidate_ids=[],
         confidence=0.20,
-        evidence_codes=["no_valid_reconciliation"],
+        evidence_codes=[
+            "no_valid_reconciliation",
+        ],
         reason="evidence below policy threshold",
+        llm_invoked=False,
     )
 
     assert result.action == PolicyAction.NO_MATCH
     assert result.candidate_ids == []
+    assert result.llm_invoked is False
+
+
+def test_hybrid_resolution_records_llm_invocation():
+    result = HybridResolution(
+        settlement_id="S004",
+        action=PolicyAction.AUTO_MATCH,
+        candidate_ids=["L004"],
+        confidence=0.91,
+        evidence_codes=[
+            "llm_verified",
+        ],
+        reason=(
+            "LLM proposal passed deterministic "
+            "verification"
+        ),
+        llm_invoked=True,
+    )
+
+    assert result.llm_invoked is True

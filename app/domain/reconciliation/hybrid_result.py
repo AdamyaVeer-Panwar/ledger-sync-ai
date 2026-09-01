@@ -11,3 +11,4 @@ class HybridResolution:
     confidence: float
     evidence_codes: list[str]
     reason: str
+    llm_invoked: bool

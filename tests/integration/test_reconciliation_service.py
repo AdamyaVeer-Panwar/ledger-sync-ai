@@ -1,11 +1,10 @@
 import uuid
+
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
 import pytest
 from sqlalchemy import select
-
-from sqlalchemy.exc import IntegrityError
 
 from app.db.models import (
     MatchResultORM,
@@ -64,6 +63,7 @@ class FakeHybridResolver:
                 "test_success",
             ],
             reason="test resolution",
+            llm_invoked=False,
         )
 
 
@@ -158,7 +158,6 @@ async def test_one_failed_record_does_not_abort_run():
         )
 
         assert len(results) == 3
-
         assert results[s001].status == "MATCHED_AI"
         assert results[s002].status == "FAILED"
         assert results[s003].status == "MATCHED_AI"
@@ -190,6 +189,7 @@ async def test_llm_timeout_marks_record_failed_and_continues():
                     "test_success",
                 ],
                 reason="test resolution",
+                llm_invoked=False,
             )
 
     async with SessionFactory() as session:
@@ -229,7 +229,6 @@ async def test_llm_timeout_marks_record_failed_and_continues():
         )
 
         assert len(results) == 3
-
         assert results[s001].status == "MATCHED_AI"
         assert results[s002].status == "FAILED"
         assert results[s003].status == "MATCHED_AI"
@@ -261,6 +260,7 @@ async def test_llm_provider_failure_marks_record_failed_and_continues():
                     "test_success",
                 ],
                 reason="test resolution",
+                llm_invoked=False,
             )
 
     async with SessionFactory() as session:
@@ -300,7 +300,6 @@ async def test_llm_provider_failure_marks_record_failed_and_continues():
         )
 
         assert len(results) == 3
-
         assert results[s001].status == "MATCHED_AI"
         assert results[s002].status == "FAILED"
         assert results[s003].status == "MATCHED_AI"
@@ -332,6 +331,7 @@ async def test_unexpected_ai_failure_marks_record_failed_and_continues():
                     "test_success",
                 ],
                 reason="test resolution",
+                llm_invoked=False,
             )
 
     async with SessionFactory() as session:
@@ -371,10 +371,10 @@ async def test_unexpected_ai_failure_marks_record_failed_and_continues():
         )
 
         assert len(results) == 3
-
         assert results[s001].status == "MATCHED_AI"
         assert results[s002].status == "FAILED"
         assert results[s003].status == "MATCHED_AI"
+
 
 @pytest.mark.asyncio
 async def test_database_failure_rolls_back_record_and_continues():
@@ -398,6 +398,7 @@ async def test_database_failure_rolls_back_record_and_continues():
                         "injected_invalid_confidence"
                     ],
                     reason="injected database failure",
+                    llm_invoked=False,
                 )
 
             return HybridResolution(
@@ -409,6 +410,7 @@ async def test_database_failure_rolls_back_record_and_continues():
                     "test_success"
                 ],
                 reason="test resolution",
+                llm_invoked=False,
             )
 
     async with SessionFactory() as session:
@@ -448,7 +450,6 @@ async def test_database_failure_rolls_back_record_and_continues():
         )
 
         assert len(results) == 3
-
         assert results[s001].status == "MATCHED_AI"
         assert results[s002].status == "FAILED"
         assert results[s003].status == "MATCHED_AI"
@@ -468,4 +469,4 @@ async def test_database_failure_rolls_back_record_and_continues():
             result.confidence <= 1.0
             for result in results.values()
         )
-        
+
