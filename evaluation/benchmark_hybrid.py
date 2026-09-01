@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.db.session import SessionFactory
-from app.domain.enums import MatchStatus
 from app.domain.reconciliation.evidence_fusion import (
     EvidenceFusion,
 )
@@ -42,8 +41,14 @@ from evaluation.benchmark_llm import (
 
 RESULTS_DIR = Path("evaluation/results")
 
-RESULTS_FILE = (
+# Historical baseline. Kept for comparison only.
+RESULTS_V1_RESULTS_FILE = (
     RESULTS_DIR / "hybrid_baseline_results_v1.jsonl"
+)
+
+# Current benchmark output.
+RESULTS_FILE = (
+    RESULTS_DIR / "hybrid_baseline_results_v2.jsonl"
 )
 
 BENCHMARK_LIMIT = int(
@@ -59,8 +64,6 @@ TIMEOUT = float(
     os.getenv("OLLAMA_TIMEOUT", "120.0")
 )
 
-# Set BENCHMARK_FRESH=1 when you intentionally want to discard
-# the existing Hybrid benchmark result file and start again.
 BENCHMARK_FRESH = (
     os.getenv("BENCHMARK_FRESH", "0") == "1"
 )
@@ -82,6 +85,16 @@ class HybridBenchmarkResult:
     evidence_codes: list[str]
     reason: str | None
 
+    # Explicit observability field.
+    #
+    # True:
+    #     HybridResolver actually entered the LLM path.
+    #
+    # False:
+    #     HybridResolver completed deterministically and did not
+    #     invoke the LLM.
+    llm_invoked: bool
+
     latency_seconds: float
 
     error_type: str | None = None
@@ -97,10 +110,10 @@ def load_completed_results() -> dict[
     HybridBenchmarkResult,
 ]:
     """
-    Load previously successful Hybrid benchmark results.
+    Load previously successful v2 benchmark results.
 
-    Failed requests are not persisted, so they can be retried
-    on the next benchmark run.
+    Failed requests are not persisted, so they can be retried on
+    a subsequent benchmark run.
     """
 
     if not RESULTS_FILE.exists():
@@ -115,7 +128,10 @@ def load_completed_results() -> dict[
         "r",
         encoding="utf-8",
     ) as file:
-        for line in file:
+        for line_number, line in enumerate(
+            file,
+            start=1,
+        ):
             line = line.strip()
 
             if not line:
@@ -135,7 +151,8 @@ def load_completed_results() -> dict[
             ) as exc:
                 print(
                     "Warning: skipping malformed "
-                    f"Hybrid result: {exc}",
+                    f"Hybrid result at line {line_number}: "
+                    f"{exc}",
                     flush=True,
                 )
                 continue
@@ -165,6 +182,7 @@ def persist_result(
         "confidence": result.confidence,
         "evidence_codes": result.evidence_codes,
         "reason": result.reason,
+        "llm_invoked": result.llm_invoked,
         "latency_seconds": result.latency_seconds,
         "error_type": result.error_type,
         "error_message": result.error_message,
@@ -202,28 +220,26 @@ def resolution_is_correct(
     result: HybridBenchmarkResult,
 ) -> bool:
     """
-    Measures whether the Hybrid system reached the correct
-    reconciliation result, independent of whether that result was
-    automated or escalated to human review.
+    Measure whether Hybrid produced the correct reconciliation
+    candidate set.
 
     Positive ground truth:
         candidate_ids must exactly equal expected IDs.
 
     Negative ground truth:
-        system must return NO_MATCH with no candidates.
+        action must be NO_MATCH and candidate_ids must be empty.
     """
 
     if result.error_type is not None:
         return False
 
-    # Ground truth: no valid reconciliation.
     if result.expected is None:
         return (
-            result.action == PolicyAction.NO_MATCH.value
+            result.action
+            == PolicyAction.NO_MATCH.value
             and not result.candidate_ids
         )
 
-    # Ground truth: one or more expected ledger candidates.
     return sets_equal(
         result.candidate_ids,
         result.expected,
@@ -269,16 +285,7 @@ async def resolve_one(
     start = time.perf_counter()
 
     try:
-        # -----------------------------------------------------------
-        # New DB session per benchmark record.
-        #
-        # This keeps the benchmark close to request-scoped production
-        # behavior and avoids holding one AsyncSession open across
-        # hundreds of LLM calls.
-        # -----------------------------------------------------------
-
         async with SessionFactory() as session:
-
             candidate_retriever = CandidateRetriever(
                 session
             )
@@ -316,6 +323,7 @@ async def resolve_one(
                 result.evidence_codes
             ),
             reason=result.reason,
+            llm_invoked=result.llm_invoked,
             latency_seconds=latency,
         )
 
@@ -333,6 +341,7 @@ async def resolve_one(
             confidence=None,
             evidence_codes=[],
             reason=None,
+            llm_invoked=False,
             latency_seconds=latency,
             error_type=type(exc).__name__,
             error_message=str(exc),
@@ -349,6 +358,23 @@ def calculate_metrics(
 
     total = len(results)
 
+    if total == 0:
+        return {
+            "resolution_accuracy": 0.0,
+            "auto_match_precision": 0.0,
+            "auto_match_recall": 0.0,
+            "false_auto_match_rate": 0.0,
+            "automation_rate": 0.0,
+            "human_review_rate": 0.0,
+            "no_match_rate": 0.0,
+            "failure_rate": 0.0,
+            "average_latency": 0.0,
+            "p50_latency": 0.0,
+            "p95_latency": 0.0,
+            "llm_invocation_rate": 0.0,
+            "llm_invocation_count": 0,
+        }
+
     successful = [
         result
         for result in results
@@ -358,8 +384,9 @@ def calculate_metrics(
     successful_count = len(successful)
 
     correct_resolutions = sum(
-        resolution_is_correct(result)
+        1
         for result in results
+        if resolution_is_correct(result)
     )
 
     auto_matches = [
@@ -368,15 +395,17 @@ def calculate_metrics(
         if is_auto_match(result)
     ]
 
-    correct_auto_matches = sum(
-        auto_match_is_correct(result)
-        for result in results
-    )
+    correct_auto_matches = [
+        result
+        for result in auto_matches
+        if auto_match_is_correct(result)
+    ]
 
-    false_auto_matches = (
-        len(auto_matches)
-        - correct_auto_matches
-    )
+    false_auto_matches = [
+        result
+        for result in auto_matches
+        if not auto_match_is_correct(result)
+    ]
 
     positive_records = [
         result
@@ -384,79 +413,75 @@ def calculate_metrics(
         if result.expected is not None
     ]
 
-    # Automated recall:
-    # How many true reconciliation cases were actually automated
-    # correctly?
-    auto_match_recall = (
-        correct_auto_matches
-        / len(positive_records)
-        if positive_records
-        else 0.0
-    )
-
-    auto_match_precision = (
-        correct_auto_matches
-        / len(auto_matches)
-        if auto_matches
-        else 0.0
-    )
-
-    automation_rate = (
-        len(auto_matches)
-        / total
-        if total
-        else 0.0
+    llm_invocation_count = sum(
+        1
+        for result in results
+        if (
+            result.error_type is None
+            and result.llm_invoked
+        )
     )
 
     human_review_count = sum(
-        result.action
-        == PolicyAction.HUMAN_REVIEW.value
+        1
         for result in results
+        if result.action
+        == PolicyAction.HUMAN_REVIEW.value
     )
 
     no_match_count = sum(
-        result.action
-        == PolicyAction.NO_MATCH.value
+        1
         for result in results
+        if result.action
+        == PolicyAction.NO_MATCH.value
     )
 
     failure_count = (
         total - successful_count
     )
 
-    false_auto_match_rate = (
-        false_auto_matches
-        / total
-        if total
+    auto_match_precision = (
+        len(correct_auto_matches)
+        / len(auto_matches)
+        if auto_matches
         else 0.0
+    )
+
+    auto_match_recall = (
+        len(correct_auto_matches)
+        / len(positive_records)
+        if positive_records
+        else 0.0
+    )
+
+    false_auto_match_rate = (
+        len(false_auto_matches)
+        / total
     )
 
     resolution_accuracy = (
         correct_resolutions
         / total
-        if total
-        else 0.0
     )
 
-    failure_rate = (
-        failure_count
+    automation_rate = (
+        len(auto_matches)
         / total
-        if total
-        else 0.0
     )
 
     human_review_rate = (
         human_review_count
         / total
-        if total
-        else 0.0
     )
 
     no_match_rate = (
         no_match_count
         / total
-        if total
-        else 0.0
+    )
+
+    failure_rate = (
+        failure_count
+        / total
     )
 
     latencies = [
@@ -479,23 +504,24 @@ def calculate_metrics(
     p95_latency = 0.0
 
     if latencies:
-        sorted_latencies = sorted(
-            latencies
-        )
+        ordered = sorted(latencies)
 
         index = min(
-            len(sorted_latencies) - 1,
+            len(ordered) - 1,
             max(
                 0,
                 int(
-                    len(sorted_latencies)
-                    * 0.95
-                )
-                - 1,
+                    len(ordered) * 0.95
+                ) - 1,
             ),
         )
 
-        p95_latency = sorted_latencies[index]
+        p95_latency = ordered[index]
+
+    llm_invocation_rate = (
+        llm_invocation_count
+        / total
+    )
 
     return {
         "resolution_accuracy": resolution_accuracy,
@@ -509,6 +535,8 @@ def calculate_metrics(
         "average_latency": average_latency,
         "p50_latency": p50_latency,
         "p95_latency": p95_latency,
+        "llm_invocation_rate": llm_invocation_rate,
+        "llm_invocation_count": llm_invocation_count,
     }
 
 
@@ -523,7 +551,7 @@ async def main() -> None:
 
         print(
             "Fresh benchmark requested: "
-            "previous Hybrid results removed."
+            "previous Hybrid v2 results removed."
         )
 
     settlements = load_settlements()
@@ -540,10 +568,8 @@ async def main() -> None:
     pending_settlements = [
         settlement
         for settlement in settlements
-        if (
-            settlement.settlement_id
-            not in persisted_results
-        )
+        if settlement.settlement_id
+        not in persisted_results
     ]
 
     total = len(settlements)
@@ -553,7 +579,7 @@ async def main() -> None:
         f"{total} records"
     )
     print(
-        f"Provider: Ollama"
+        "Provider: Ollama"
     )
     print(
         f"Model: {MODEL}"
@@ -594,7 +620,6 @@ async def main() -> None:
 
         current_results.append(result)
 
-        # Persist only successful results.
         if result.error_type is None:
             persist_result(result)
 
@@ -653,7 +678,7 @@ async def main() -> None:
         - len(successful_results)
     )
 
-    action_counts = {}
+    action_counts: dict[str, int] = {}
 
     for result in successful_results:
         action = result.action
@@ -669,8 +694,12 @@ async def main() -> None:
 
     print()
     print()
-    print("Hybrid Reconciliation Benchmark")
-    print("--------------------------------")
+    print(
+        "Hybrid Reconciliation Benchmark"
+    )
+    print(
+        "--------------------------------"
+    )
     print(
         f"Model               : {MODEL}"
     )
@@ -688,8 +717,12 @@ async def main() -> None:
     )
     print()
 
-    print("Resolution Quality")
-    print("------------------")
+    print(
+        "Resolution Quality"
+    )
+    print(
+        "------------------"
+    )
     print(
         f"Resolution accuracy : "
         f"{metrics['resolution_accuracy']:.2%}"
@@ -706,10 +739,15 @@ async def main() -> None:
         f"False-auto-match rate: "
         f"{metrics['false_auto_match_rate']:.2%}"
     )
+
     print()
 
-    print("Operational Outcomes")
-    print("--------------------")
+    print(
+        "Operational Outcomes"
+    )
+    print(
+        "--------------------"
+    )
     print(
         f"Automation rate     : "
         f"{metrics['automation_rate']:.2%}"
@@ -728,8 +766,28 @@ async def main() -> None:
     )
     print()
 
-    print("Actions")
-    print("-------")
+    print(
+        "LLM Usage"
+    )
+    print(
+        "---------"
+    )
+    print(
+        f"LLM invocations     : "
+        f"{metrics['llm_invocation_count']}"
+    )
+    print(
+        f"LLM invocation rate : "
+        f"{metrics['llm_invocation_rate']:.2%}"
+    )
+    print()
+
+    print(
+        "Actions"
+    )
+    print(
+        "-------"
+    )
 
     for action in sorted(
         action_counts,
@@ -742,8 +800,12 @@ async def main() -> None:
 
     print()
 
-    print("Latency")
-    print("-------")
+    print(
+        "Latency"
+    )
+    print(
+        "-------"
+    )
     print(
         f"Average             : "
         f"{metrics['average_latency'] * 1000:.2f} ms"
@@ -756,12 +818,14 @@ async def main() -> None:
         f"P95                 : "
         f"{metrics['p95_latency'] * 1000:.2f} ms"
     )
+
     print()
 
     print(
         f"Total benchmark time: "
         f"{benchmark_elapsed:.2f} sec"
     )
+
     print(
         f"Results file        : "
         f"{RESULTS_FILE}"
