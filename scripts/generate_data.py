@@ -4,6 +4,7 @@ from app.domain.synthetic.generator import DatasetGenerator
 from app.domain.synthetic.serialization import write_dataset
 from app.domain.synthetic.validator import validate_dataset
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate synthetic reconciliation dataset."
@@ -45,16 +46,24 @@ def main() -> None:
 
     validate_dataset(dataset)
 
-    write_dataset(dataset, args.output)
-
     write_dataset(
         dataset,
         args.output,
     )
 
-    print(f"Generated {len(dataset.settlements)} settlements.")
-    print(f"Generated {len(dataset.ledger_records)} ledger records.")
-    print(f"Output directory: {args.output}")
+    print(
+        f"Generated {len(dataset.settlements)} settlements."
+    )
+    print(
+        f"Generated {len(dataset.ledger_records)} ledger records."
+    )
+    print(
+        f"Generated "
+        f"{len(dataset.scenario_by_settlement)} scenario labels."
+    )
+    print(
+        f"Output directory: {args.output}"
+    )
 
 
 if __name__ == "__main__":

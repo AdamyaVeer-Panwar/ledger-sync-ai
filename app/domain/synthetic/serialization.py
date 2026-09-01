@@ -10,11 +10,30 @@ def write_dataset(
     output_dir: str | Path,
 ) -> None:
     output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
+    output_path.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
-    _write_settlements(dataset, output_path / "settlements.csv")
-    _write_ledger_records(dataset, output_path / "ledger.csv")
-    _write_ground_truth(dataset, output_path / "ground_truth.json")
+    _write_settlements(
+        dataset,
+        output_path / "settlements.csv",
+    )
+
+    _write_ledger_records(
+        dataset,
+        output_path / "ledger.csv",
+    )
+
+    _write_ground_truth(
+        dataset,
+        output_path / "ground_truth.json",
+    )
+
+    _write_scenario_manifest(
+        dataset,
+        output_path / "scenario_manifest.json",
+    )
 
 
 def _write_settlements(
@@ -103,3 +122,33 @@ def _write_ground_truth(
             indent=2,
             sort_keys=True,
         )
+
+
+def _write_scenario_manifest(
+    dataset: GeneratedDataset,
+    output_file: Path,
+) -> None:
+    """
+    Persist scenario provenance separately from the financial data.
+
+    This manifest is evaluation metadata only. It is not consumed by
+    the reconciliation engine itself.
+    """
+
+    scenario_manifest = {
+        settlement_id: scenario.value
+        for settlement_id, scenario
+        in dataset.scenario_by_settlement.items()
+    }
+
+    with output_file.open(
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            scenario_manifest,
+            file,
+            indent=2,
+            sort_keys=True,
+        )
+
