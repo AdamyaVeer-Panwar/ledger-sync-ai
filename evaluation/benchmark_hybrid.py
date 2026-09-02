@@ -34,6 +34,9 @@ from evaluation.benchmark_llm import (
     load_settlements,
 )
 
+from app.observability.server import (
+    start_metrics_server,
+)
 
 # -------------------------------------------------------------------
 # Benchmark configuration
@@ -545,7 +548,8 @@ def calculate_metrics(
 # -------------------------------------------------------------------
 
 async def main() -> None:
-
+    start_metrics_server()
+    
     if BENCHMARK_FRESH and RESULTS_FILE.exists():
         RESULTS_FILE.unlink()
 
