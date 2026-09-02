@@ -1,7 +1,10 @@
 from decimal import Decimal
 
 from app.domain.enums import MatchStatus
-from app.domain.models import LedgerRecord, SettlementRecord
+from app.domain.models import (
+    LedgerRecord,
+    SettlementRecord,
+)
 from app.domain.reconciliation.evidence_fusion import (
     EvidenceFusion,
 )
@@ -20,6 +23,12 @@ from app.domain.reconciliation.rule_matcher import (
 )
 from app.domain.reconciliation.rule_result import (
     to_rule_match_result,
+)
+from app.observability.logging import (
+    log_evidence_fusion,
+    log_llm_verification,
+    log_policy_decision,
+    log_rule_evaluation,
 )
 
 
@@ -54,7 +63,7 @@ class HybridResolver:
                  ↓
           Evidence Fusion
                  ↓
-          Policy Engine
+           Policy Engine
                  ↓
           HybridResolution
 
@@ -64,8 +73,8 @@ class HybridResolver:
         cannot safely establish the outcome.
 
         If deterministic rules already establish ambiguity,
-        asking the LLM to choose one candidate would not provide
-        sufficient authorization evidence.
+        the system does not ask the LLM to arbitrarily select
+        one candidate.
     """
 
     def __init__(
@@ -125,10 +134,27 @@ class HybridResolver:
         )
 
         # ---------------------------------------------------------
+        # 2a. Emit rule-stage telemetry.
+        #
+        # Logging must never affect reconciliation correctness.
+        # ---------------------------------------------------------
+
+        try:
+            log_rule_evaluation(
+                decision=rule_result.status.value,
+                confidence=rule_result.confidence,
+                candidate_count=len(
+                    rule_result.candidate_ids
+                ),
+            )
+        except Exception:
+            pass
+
+        # ---------------------------------------------------------
         # 3. Strong deterministic result.
         #
-        # Deterministic evidence is sufficient. The LLM is not
-        # invoked.
+        # Deterministic evidence is sufficient.
+        # The LLM is not invoked.
         # ---------------------------------------------------------
 
         if rule_result.is_confident:
@@ -155,11 +181,11 @@ class HybridResolver:
         # distinguished by the existing deterministic evidence.
         #
         # Do not ask the LLM to arbitrarily choose one.
-        # Escalate directly to human review.
         # ---------------------------------------------------------
 
         if (
-            rule_result.status == MatchStatus.HUMAN_REVIEW
+            rule_result.status
+            == MatchStatus.HUMAN_REVIEW
             and "multiple_candidates"
             in rule_result.evidence_codes
         ):
@@ -183,7 +209,7 @@ class HybridResolver:
         # ---------------------------------------------------------
         # 5. Rules are insufficient.
         #
-        # This is the point where the LLM is actually invoked.
+        # This is the ONLY point where the LLM is invoked.
         # ---------------------------------------------------------
 
         ai_result = await self.llm_resolver.resolve(
@@ -193,6 +219,10 @@ class HybridResolver:
 
         # ---------------------------------------------------------
         # 6. Deterministically verify the LLM proposal.
+        #
+        # The LLM proposes.
+        # The verifier determines whether the proposal has
+        # objective support.
         # ---------------------------------------------------------
 
         verification_result = self.verifier.verify(
@@ -200,6 +230,17 @@ class HybridResolver:
             candidates=candidates,
             resolution=ai_result.resolution,
         )
+
+        try:
+            log_llm_verification(
+                status=verification_result.status,
+                candidate_count=len(
+                    verification_result.candidate_ids
+                ),
+                reason=verification_result.reason,
+            )
+        except Exception:
+            pass
 
         # ---------------------------------------------------------
         # 7. Fuse rule evidence + AI evidence + verification.
@@ -211,6 +252,17 @@ class HybridResolver:
             verification_result,
         )
 
+        try:
+            log_evidence_fusion(
+                agreement=fusion_result.agreement.value,
+                candidate_count=len(
+                    fusion_result.candidate_ids
+                ),
+                confidence=fusion_result.confidence,
+            )
+        except Exception:
+            pass
+
         # ---------------------------------------------------------
         # 8. Policy is the final authorization boundary.
         # ---------------------------------------------------------
@@ -218,6 +270,24 @@ class HybridResolver:
         policy_decision = self.policy.evaluate(
             fusion_result
         )
+
+        try:
+            log_policy_decision(
+                action=policy_decision.action.value,
+                candidate_count=len(
+                    policy_decision.candidate_ids
+                ),
+                confidence=policy_decision.confidence,
+                reason=policy_decision.reason,
+            )
+        except Exception:
+            pass
+
+        # ---------------------------------------------------------
+        # 9. Return final hybrid resolution.
+        #
+        # At this point the LLM definitely participated.
+        # ---------------------------------------------------------
 
         return HybridResolution(
             settlement_id=settlement.settlement_id,

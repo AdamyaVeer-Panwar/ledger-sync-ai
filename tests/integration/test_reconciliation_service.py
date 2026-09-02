@@ -1,5 +1,7 @@
 import uuid
 
+import structlog
+
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
@@ -28,6 +30,11 @@ from app.services.reconciliation_services import (
     ReconciliationService,
 )
 
+from app.observability.logging import (
+    bind_run_id,
+    clear_observability_context,
+    log_reconciliation_decision,
+)
 
 def unique_id(prefix: str) -> str:
     """Return a unique test identifier."""
@@ -470,3 +477,115 @@ async def test_database_failure_rolls_back_record_and_continues():
             for result in results.values()
         )
 
+@pytest.mark.asyncio
+async def test_reconciliation_logs_are_correlated_by_run_and_settlement():
+    """
+    Verify end-to-end correlation through the real
+    ReconciliationService execution path.
+
+    Invariants:
+        - all records in one run share the same run_id
+        - each record has its own settlement_id
+        - settlement_id from one record never leaks into another
+    """
+
+    log_capture = structlog.testing.LogCapture()
+
+    original_config = structlog.get_config()
+
+    structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            log_capture,
+        ],
+        cache_logger_on_first_use=False,
+    )
+
+    try:
+        idempotency_key = unique_id(
+            "TEST-OBSERVABILITY-CORRELATION",
+        )
+
+        async with SessionFactory() as session:
+            run_repository = RunRepository(session)
+
+            run = await run_repository.create(
+                idempotency_key=idempotency_key,
+            )
+
+            s001 = unique_id("S001")
+            s002 = unique_id("S002")
+
+            settlements = [
+                make_settlement(
+                    s001,
+                    run,
+                ),
+                make_settlement(
+                    s002,
+                    run,
+                ),
+            ]
+
+            session.add_all(settlements)
+
+            await session.commit()
+
+            service = ReconciliationService(
+                session=session,
+                resolver=FakeHybridResolver(
+                    failing_settlement_id=unique_id(
+                        "NO-FAILURE",
+                    ),
+                ),
+            )
+
+            processed_run = await service.process_run(
+                idempotency_key=idempotency_key,
+                settlements=settlements,
+            )
+
+            assert (
+                processed_run.status
+                == ReconciliationState.COMPLETED.value
+            )
+
+        decision_events = [
+            event
+            for event in log_capture.entries
+            if event.get("event")
+            == "reconciliation_decision"
+        ]
+
+        assert len(decision_events) == 2
+
+        first = decision_events[0]
+        second = decision_events[1]
+
+        # Both records belong to the same reconciliation run.
+        assert first["run_id"] == processed_run.id
+        assert second["run_id"] == processed_run.id
+
+        # Each record has its own settlement correlation ID.
+        assert {
+            first["settlement_id"],
+            second["settlement_id"],
+        } == {
+            s001,
+            s002,
+        }
+
+        # Critical invariant:
+        # one settlement's context must not leak into another.
+        assert (
+            first["settlement_id"]
+            != second["settlement_id"]
+        )
+
+        # Both events represent successful reconciliation decisions.
+        assert first["decision"] == "AUTO_MATCH"
+        assert second["decision"] == "AUTO_MATCH"
+
+    finally:
+        structlog.configure(**original_config)
+        structlog.contextvars.clear_contextvars()
