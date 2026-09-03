@@ -23,7 +23,7 @@ LLM_RESULTS_FILE = (
 )
 
 HYBRID_RESULTS_FILE = (
-    RESULTS_DIR / "hybrid_baseline_results_v1.jsonl"
+    RESULTS_DIR / "hybrid_baseline_results_v2.jsonl"
 )
 
 GROUND_TRUTH_FILE = (
