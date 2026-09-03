@@ -9,6 +9,8 @@ from app.domain.enums import LedgerEntryType
 from sqlalchemy.exc import IntegrityError
 from app.db.models import MatchResultORM
 
+from sqlalchemy import insert
+
 @pytest.mark.asyncio
 async def test_insert_settlement_record():
     async with SessionFactory() as session:
@@ -87,7 +89,7 @@ async def test_settlement_requires_valid_run():
 async def test_settlement_id_must_be_unique():
     async with SessionFactory() as session:
         run = ReconciliationRun(
-            idempotency_key="TEST-RUN-DB-INSERT",
+            idempotency_key="TEST-RUN-DB-UNIQUE",
             status="PENDING",
             created_at=datetime.now(timezone.utc),
         )
@@ -106,9 +108,9 @@ async def test_settlement_id_must_be_unique():
         session.add(first)
         await session.flush()
 
-        duplicate = SettlementORM(
+        duplicate = insert(SettlementORM).values(
             settlement_id="TEST-S-UNIQUE",
-            run=run,
+            run_id=run.id,
             merchant_id="M002",
             amount=Decimal("500.00"),
             currency="INR",
@@ -117,13 +119,10 @@ async def test_settlement_id_must_be_unique():
             created_at=datetime.now(timezone.utc),
         )
 
-        session.add(duplicate)
-
         with pytest.raises(IntegrityError):
-            await session.flush()
+            await session.execute(duplicate)
 
         await session.rollback()
-
 
 @pytest.mark.asyncio
 async def test_settlement_amount_must_be_positive():
