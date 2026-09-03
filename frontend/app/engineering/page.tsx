@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 type TraceKey = "S014" | "S027" | "S041";
+type Tone = "copper" | "steel" | "green" | "amber" | "red" | "graphite";
 
 type Trace = {
   id: TraceKey;
@@ -83,41 +84,62 @@ const authorityRows = [
   ["PERSISTENCE", "Record outcome and state", "Create an unverified decision"],
 ];
 
-const failureModes = [
+const failureModes: [string, string, string, Tone][] = [
   ["INPUT", "Malformed or invalid source", "REJECT INPUT", "red"],
   ["RETRIEVAL", "No viable candidate", "REVIEW / NO MATCH", "amber"],
-  ["AI", "Provider or model failure", "FALLBACK / ESCALATE", "blue"],
+  ["AI", "Provider or model failure", "FALLBACK / ESCALATE", "steel"],
   ["VERIFY", "Evidence conflict", "STOP AUTOMATION", "copper"],
   ["POLICY", "Unauthorized state", "STOP", "red"],
 ];
 
-function toneText(tone: string): string {
+function toneText(tone: Tone): string {
   switch (tone) {
     case "copper":
       return "text-[#A85F3E]";
-    case "blue":
+    case "steel":
       return "text-[#557889]";
     case "green":
       return "text-[#617454]";
     case "amber":
       return "text-[#A97832]";
-    default:
+    case "red":
       return "text-[#A44A3D]";
+    default:
+      return "text-[#3D4449]";
   }
 }
 
-function toneFill(tone: string): string {
+function toneFill(tone: Tone): string {
   switch (tone) {
     case "copper":
       return "bg-[#B56A45]";
-    case "blue":
+    case "steel":
       return "bg-[#557889]";
     case "green":
       return "bg-[#617454]";
     case "amber":
       return "bg-[#A97832]";
-    default:
+    case "red":
       return "bg-[#A44A3D]";
+    default:
+      return "bg-[#3D4449]";
+  }
+}
+
+function toneBorder(tone: Tone): string {
+  switch (tone) {
+    case "copper":
+      return "border-[#B56A45]";
+    case "steel":
+      return "border-[#557889]";
+    case "green":
+      return "border-[#617454]";
+    case "amber":
+      return "border-[#A97832]";
+    case "red":
+      return "border-[#A44A3D]";
+    default:
+      return "border-[#3D4449]";
   }
 }
 
@@ -137,55 +159,34 @@ export default function EngineeringPage() {
 
       <div className="sticky top-0 z-30 -mx-4 border-b border-[#D3CEC4] bg-[#F3F0E8]/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex items-center justify-between gap-4">
-          <span className="font-mono text-[8px] font-semibold tracking-[0.18em] text-[#606B72]">
+          <Link
+            href="/"
+            className="font-mono text-[9px] font-semibold tracking-[0.18em] text-[#606B72] transition-colors hover:text-[#A85F3E]"
+          >
             LEDGERSYNC / ENGINEERING
-          </span>
+          </Link>
 
           <nav className="hidden items-center gap-5 overflow-x-auto md:flex">
-            <a
-              href="#architecture"
-              className="font-mono text-[7px] tracking-[0.11em] text-[#68737A] hover:text-[#A85F3E]"
-            >
-              ARCHITECTURE
-            </a>
-
-            <a
-              href="#authority"
-              className="font-mono text-[7px] tracking-[0.11em] text-[#68737A] hover:text-[#A85F3E]"
-            >
-              AUTHORITY
-            </a>
-
-            <a
-              href="#trace"
-              className="font-mono text-[7px] tracking-[0.11em] text-[#68737A] hover:text-[#A85F3E]"
-            >
-              TRACE
-            </a>
-
-            <a
-              href="#reliability"
-              className="font-mono text-[7px] tracking-[0.11em] text-[#68737A] hover:text-[#A85F3E]"
-            >
-              RELIABILITY
-            </a>
-
-            <a
-              href="#observability"
-              className="font-mono text-[7px] tracking-[0.11em] text-[#68737A] hover:text-[#A85F3E]"
-            >
-              OBSERVABILITY
-            </a>
-
-            <a
-              href="#evidence"
-              className="font-mono text-[7px] tracking-[0.11em] text-[#68737A] hover:text-[#A85F3E]"
-            >
-              EVIDENCE
-            </a>
+            {[
+              ["architecture", "ARCHITECTURE"],
+              ["authority", "AUTHORITY"],
+              ["trace", "TRACE"],
+              ["reliability", "RELIABILITY"],
+              ["observability", "OBSERVABILITY"],
+              ["evidence", "EVIDENCE"],
+              ["production", "PRODUCTION"],
+            ].map(([href, label]) => (
+              <a
+                key={href}
+                href={`#${href}`}
+                className="font-mono text-[8px] tracking-[0.12em] text-[#68737A] transition-colors hover:text-[#A85F3E]"
+              >
+                {label}
+              </a>
+            ))}
           </nav>
 
-          <span className="font-mono text-[7px] font-semibold tracking-[0.12em] text-[#617454]">
+          <span className="font-mono text-[8px] font-semibold tracking-[0.12em] text-[#617454]">
             ● HEALTHY
           </span>
         </div>
@@ -195,46 +196,59 @@ export default function EngineeringPage() {
           HERO
           ===================================================== */}
 
-      <header className="relative border-b border-[#C9C4B8] py-14 sm:py-18 lg:py-24">
-        <div className="absolute right-[-70px] top-8 hidden h-[260px] w-[260px] rounded-full border border-[#D8D3C9] lg:block" />
-        <div className="absolute right-[-15px] top-[63px] hidden h-[165px] w-[165px] rounded-full border border-[#E1DDD4] lg:block" />
+      <header className="relative overflow-hidden border-b border-[#C9C4B8] py-14 sm:py-20 lg:py-24">
+        <div className="absolute right-[-90px] top-0 hidden h-[300px] w-[300px] rounded-full border border-[#D8D3C9] lg:block" />
+        <div className="absolute right-[35px] top-[72px] hidden h-[170px] w-[170px] rounded-full border border-[#E1DDD4] lg:block" />
 
-        <div className="relative grid gap-12 lg:grid-cols-[1fr_360px] lg:items-end">
+        <div className="relative grid gap-12 lg:grid-cols-[1fr_390px] lg:items-end">
           <div>
             <div className="flex items-center gap-3">
-              <span className="font-mono text-[8px] font-semibold tracking-[0.2em] text-[#B56A45]">
+              <span className="font-mono text-[9px] font-semibold tracking-[0.2em] text-[#B56A45]">
                 05
               </span>
 
-              <span className="h-px w-8 bg-[#B56A45]" />
+              <span className="h-px w-9 bg-[#B56A45]" />
 
-              <span className="font-mono text-[8px] font-semibold tracking-[0.2em] text-[#66737D]">
+              <span className="font-mono text-[10px] font-semibold tracking-[0.2em] text-[#66737D]">
                 ENGINEERING REVIEW
               </span>
             </div>
 
-            <h1 className="mt-7 max-w-5xl text-[clamp(3.2rem,8vw,7.5rem)] font-semibold leading-[0.84] tracking-[-0.075em]">
-              Understand
+            <h1 className="mt-7 max-w-6xl text-[clamp(3.4rem,8vw,7.8rem)] font-semibold leading-[0.84] tracking-[-0.078em]">
+              Where AI
               <br />
-              the machine.
+              reasons.
+              <br />
+              Systems decide.
             </h1>
 
-            <p className="mt-8 max-w-2xl text-base leading-7 text-[#626D73] sm:text-lg">
-              LedgerSync is built around a deliberate boundary:
-              <strong className="text-[#25292D]">
-                {" "}AI may propose. Evidence must authorize.
-              </strong>
+            <p className="mt-8 max-w-3xl text-base leading-7 text-[#626D73] sm:text-lg sm:leading-8">
+              LedgerSync separates semantic reasoning from financial authority.
+              Deterministic evidence, verification, and policy remain in control
+              of the final outcome.
             </p>
+
+            <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
+              <span className="font-mono text-[10px] font-semibold tracking-[0.11em] text-[#A85F3E]">
+                AI MAY PROPOSE
+              </span>
+
+              <span className="text-[#A0A4A1]">/</span>
+
+              <span className="font-mono text-[10px] font-semibold tracking-[0.11em] text-[#617454]">
+                EVIDENCE MUST AUTHORIZE
+              </span>
+            </div>
           </div>
 
           <div className="border-l border-[#C9C4B8] pl-7">
-            <div className="font-mono text-[8px] font-semibold tracking-[0.16em] text-[#66737D]">
-              SYSTEM SIGNAL
+            <div className="font-mono text-[10px] font-semibold tracking-[0.16em] text-[#66737D]">
+              VERIFIED SIGNAL
             </div>
 
-            <div className="mt-6 grid grid-cols-3 gap-5">
+            <div className="mt-6 grid grid-cols-3 gap-6">
               <SignalStat
-                value="150+"
+                value="161"
                 label="TESTS"
                 tone="copper"
               />
@@ -242,7 +256,7 @@ export default function EngineeringPage() {
               <SignalStat
                 value="400"
                 label="RECORDS"
-                tone="blue"
+                tone="steel"
               />
 
               <SignalStat
@@ -252,8 +266,12 @@ export default function EngineeringPage() {
               />
             </div>
 
-            <div className="mt-7 border-t border-[#C9C4B8] pt-5 font-mono text-[7px] leading-5 tracking-[0.04em] text-[#7A848A]">
-              DOCKER · STRUCTURED LOGGING · PROMETHEUS · GRAFANA · BOUNDED AI
+            <div className="mt-8 border-t border-[#C9C4B8] pt-5">
+              <div className="font-mono text-[9px] leading-6 tracking-[0.04em] text-[#737E84]">
+                DOCKER · STRUCTURED LOGGING
+                <br />
+                PROMETHEUS · GRAFANA · OLLAMA
+              </div>
             </div>
           </div>
         </div>
@@ -265,16 +283,16 @@ export default function EngineeringPage() {
 
       <section
         id="architecture"
-        className="scroll-mt-20 pt-14"
+        className="scroll-mt-20 pt-16"
       >
         <SectionHeader
           eyebrow="01 / SYSTEM ARCHITECTURE"
           title="A decision pipeline with an explicit AI boundary."
-          description="The model sits inside the system. It does not sit above it."
+          description="The model is a capability inside the workflow, not the authority above it."
         />
 
-        <div className="mt-9 overflow-x-auto pb-3">
-          <div className="min-w-[1050px]">
+        <div className="mt-10 overflow-x-auto pb-5">
+          <div className="min-w-[1080px]">
             <div className="flex items-center">
               <ArchitectureNode
                 number="01"
@@ -289,7 +307,7 @@ export default function EngineeringPage() {
                 number="02"
                 title="RETRIEVE"
                 detail="bounded candidates"
-                tone="blue"
+                tone="steel"
               />
 
               <ArchitectureConnector />
@@ -320,27 +338,27 @@ export default function EngineeringPage() {
               />
             </div>
 
-            <div className="ml-[40%] mt-3 flex max-w-[440px] items-start gap-4">
-              <div className="ml-3 h-10 w-px bg-[#557889]" />
+            <div className="ml-[39%] mt-5 flex max-w-[510px] items-start gap-4">
+              <div className="ml-3 h-12 w-px bg-[#557889]" />
 
-              <div className="pt-8">
-                <div className="font-mono text-[8px] font-semibold tracking-[0.15em] text-[#557889]">
+              <div className="pt-10">
+                <div className="font-mono text-[9px] font-semibold tracking-[0.15em] text-[#557889]">
                   CONDITIONAL AI PATH
                 </div>
 
-                <div className="mt-2 text-sm font-semibold">
-                  LLM RESOLVER
+                <div className="mt-2 text-base font-semibold">
+                  OLLAMA / QWEN 2.5 3B
                 </div>
 
-                <p className="mt-1 text-xs leading-5 text-[#6F797F]">
+                <p className="mt-2 text-sm leading-6 text-[#69737A]">
                   Invoked only when deterministic evidence is insufficient,
-                  then returned to verification.
+                  then returned to verification before policy.
                 </p>
               </div>
             </div>
 
-            <div className="mt-10 flex flex-wrap items-center gap-4 border-y border-[#C9C4B8] py-5">
-              <span className="font-mono text-[8px] font-semibold tracking-[0.15em] text-[#66737D]">
+            <div className="mt-10 flex flex-wrap items-center gap-4 border-y border-[#C9C4B8] py-6">
+              <span className="font-mono text-[9px] font-semibold tracking-[0.15em] text-[#66737D]">
                 AUTHORIZED OUTCOMES
               </span>
 
@@ -359,7 +377,7 @@ export default function EngineeringPage() {
                 tone="red"
               />
 
-              <span className="ml-auto font-mono text-[7px] tracking-[0.1em] text-[#7A848A]">
+              <span className="ml-auto font-mono text-[9px] tracking-[0.1em] text-[#4E575C]">
                 POLICY DECIDES
               </span>
             </div>
@@ -373,27 +391,27 @@ export default function EngineeringPage() {
 
       <section
         id="authority"
-        className="scroll-mt-20 pt-14"
+        className="scroll-mt-20 pt-16"
       >
         <SectionHeader
           eyebrow="02 / AUTHORITY"
           title="Responsibility is explicit."
-          description="Each component has a defined authority boundary."
+          description="The architecture prevents one uncertain component from silently becoming the final decision-maker."
         />
 
         <div className="mt-8 overflow-x-auto">
-          <table className="w-full min-w-[900px] border-collapse">
+          <table className="w-full min-w-[950px] border-collapse">
             <thead>
               <tr className="border-b-2 border-[#25292D]">
-                <th className="py-4 pr-8 text-left font-mono text-[8px] tracking-[0.15em] text-[#66737D]">
+                <th className="py-5 pr-8 text-left font-mono text-[9px] font-semibold tracking-[0.15em] text-[#66737D]">
                   COMPONENT
                 </th>
 
-                <th className="py-4 pr-8 text-left font-mono text-[8px] tracking-[0.15em] text-[#66737D]">
+                <th className="py-5 pr-8 text-left font-mono text-[9px] font-semibold tracking-[0.15em] text-[#66737D]">
                   ALLOWED
                 </th>
 
-                <th className="py-4 text-left font-mono text-[8px] tracking-[0.15em] text-[#66737D]">
+                <th className="py-5 text-left font-mono text-[9px] font-semibold tracking-[0.15em] text-[#66737D]">
                   FORBIDDEN
                 </th>
               </tr>
@@ -404,13 +422,13 @@ export default function EngineeringPage() {
                 ([component, allowed, forbidden], index) => (
                   <tr
                     key={component}
-                    className="border-b border-[#D4CFC5]"
+                    className="border-b border-[#D4CFC5] transition-colors hover:bg-[#EEEAE1]"
                   >
-                    <td className="py-5 pr-8">
+                    <td className="py-6 pr-8">
                       <div className="flex items-center gap-3">
                         <span
                           className={[
-                            "h-2 w-2 rounded-full",
+                            "h-2.5 w-2.5 rounded-full",
                             index === 0
                               ? "bg-[#B56A45]"
                               : index === 1
@@ -421,17 +439,17 @@ export default function EngineeringPage() {
                           ].join(" ")}
                         />
 
-                        <span className="font-mono text-[9px] font-semibold tracking-[0.08em]">
+                        <span className="font-mono text-[10px] font-semibold tracking-[0.08em]">
                           {component}
                         </span>
                       </div>
                     </td>
 
-                    <td className="py-5 pr-8 text-sm text-[#59636A]">
+                    <td className="py-6 pr-8 text-base leading-7 text-[#59636A]">
                       {allowed}
                     </td>
 
-                    <td className="py-5 text-sm text-[#9A5045]">
+                    <td className="py-6 text-base leading-7 text-[#9A5045]">
                       {forbidden}
                     </td>
                   </tr>
@@ -453,29 +471,29 @@ export default function EngineeringPage() {
         <SectionHeader
           eyebrow="03 / DECISION TRACE"
           title="Watch one transaction move through the system."
-          description="Inspect the decision path instead of reading a static architecture diagram."
+          description="Inspect the decision path rather than trusting a static architecture diagram."
         />
 
-        <div className="mt-8 overflow-hidden bg-[#25292D] text-[#F3F0E8] shadow-[0_18px_60px_rgba(37,41,45,0.12)]">
-          <div className="flex flex-col gap-4 border-b border-[#464B4F] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-8 overflow-hidden bg-[#25292D] text-[#F3F0E8] shadow-[0_20px_70px_rgba(37,41,45,0.14)]">
+          <div className="flex flex-col gap-5 border-b border-[#464B4F] px-7 py-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="font-mono text-[8px] font-semibold tracking-[0.18em] text-[#87939B]">
+              <div className="font-mono text-[9px] font-semibold tracking-[0.18em] text-[#87939B]">
                 TRACE REPLAY
               </div>
 
-              <div className="mt-1 text-xs text-[#AEB6BA]">
+              <div className="mt-2 text-sm text-[#AEB6BA]">
                 Select a representative control path.
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {traces.map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => setSelectedTrace(item.id)}
                   className={[
-                    "px-4 py-2.5 font-mono text-[8px] font-semibold tracking-[0.12em] transition-colors",
+                    "px-4 py-3 font-mono text-[9px] font-semibold tracking-[0.12em] transition-colors",
                     selectedTrace === item.id
                       ? "bg-[#B56A45] text-white"
                       : "bg-[#343A3E] text-[#AAB3B8] hover:bg-[#41484D]",
@@ -487,21 +505,21 @@ export default function EngineeringPage() {
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-[280px_1fr]">
-            <div className="border-b border-[#464B4F] p-6 lg:border-b-0 lg:border-r">
-              <div className="font-mono text-[8px] tracking-[0.16em] text-[#7F8B93]">
+          <div className="grid lg:grid-cols-[300px_1fr]">
+            <div className="border-b border-[#464B4F] p-7 lg:border-b-0 lg:border-r">
+              <div className="font-mono text-[9px] tracking-[0.16em] text-[#7F8B93]">
                 RECORD
               </div>
 
-              <div className="mt-3 font-mono text-4xl font-semibold tracking-[-0.045em]">
+              <div className="mt-3 font-mono text-5xl font-semibold tracking-[-0.05em]">
                 {trace.id}
               </div>
 
-              <div className="mt-2 font-mono text-[8px] font-semibold tracking-[0.14em] text-[#D08A61]">
+              <div className="mt-2 font-mono text-[9px] font-semibold tracking-[0.14em] text-[#D08A61]">
                 {trace.scenario}
               </div>
 
-              <div className="mt-8 space-y-5 border-t border-[#464B4F] pt-6">
+              <div className="mt-9 space-y-6 border-t border-[#464B4F] pt-6">
                 <DarkMeta
                   label="AMOUNT"
                   value={trace.amount}
@@ -519,8 +537,8 @@ export default function EngineeringPage() {
               </div>
             </div>
 
-            <div className="relative p-6 sm:p-8">
-              <div className="absolute bottom-8 left-[11px] top-8 w-px bg-[#4A4F53]" />
+            <div className="relative p-7 sm:p-9">
+              <div className="absolute bottom-10 left-[12px] top-10 w-px bg-[#4A4F53]" />
 
               <TraceEvent
                 number="01"
@@ -558,16 +576,16 @@ export default function EngineeringPage() {
               />
 
               <div className="relative mt-1 flex items-center gap-4">
-                <span className="grid h-6 w-6 place-items-center rounded-full bg-[#A97832] font-mono text-[9px] font-semibold text-white">
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-[#A97832] font-mono text-[10px] font-semibold text-white">
                   !
                 </span>
 
                 <div>
-                  <div className="font-mono text-[8px] tracking-[0.14em] text-[#D3A15E]">
+                  <div className="font-mono text-[9px] tracking-[0.14em] text-[#D3A15E]">
                     FINAL CONTROL STATE
                   </div>
 
-                  <div className="mt-1 text-lg font-semibold">
+                  <div className="mt-1 text-xl font-semibold">
                     HUMAN_REVIEW
                   </div>
                 </div>
@@ -587,28 +605,31 @@ export default function EngineeringPage() {
       >
         <SectionHeader
           eyebrow="04 / RELIABILITY"
-          title="Failure is designed into the system."
-          description="Every important failure domain has a deliberate response."
+          title="Failure is part of the state model."
+          description="The system is designed to stop, reject or escalate instead of forcing uncertain records into automation."
         />
 
-        <div className="mt-8 grid gap-7 md:grid-cols-5">
+        <div className="mt-9 grid gap-8 md:grid-cols-5">
           {failureModes.map(
             ([component, failure, response, tone]) => (
-              <div key={component}>
+              <div
+                key={component}
+                className="border-t-2 border-transparent pt-5 transition-colors hover:border-[#B56A45]"
+              >
                 <div
-                  className={`h-1 w-9 ${toneFill(tone)}`}
+                  className={`h-1.5 w-10 ${toneFill(tone)}`}
                 />
 
-                <div className="mt-5 font-mono text-[8px] font-semibold tracking-[0.14em] text-[#66737D]">
+                <div className="mt-5 font-mono text-[9px] font-semibold tracking-[0.14em] text-[#66737D]">
                   {component}
                 </div>
 
-                <div className="mt-3 text-sm font-semibold leading-5">
+                <div className="mt-3 text-base font-semibold leading-6">
                   {failure}
                 </div>
 
                 <div
-                  className={`mt-5 font-mono text-[8px] font-semibold tracking-[0.12em] ${toneText(tone)}`}
+                  className={`mt-5 font-mono text-[9px] font-semibold tracking-[0.12em] ${toneText(tone)}`}
                 >
                   {response}
                 </div>
@@ -617,7 +638,7 @@ export default function EngineeringPage() {
           )}
         </div>
 
-        <div className="mt-9 grid gap-6 border-y border-[#C9C4B8] py-7 sm:grid-cols-3">
+        <div className="mt-10 grid gap-7 border-y border-[#C9C4B8] py-8 sm:grid-cols-3">
           <Principle
             title="UNKNOWN"
             symbol="≠"
@@ -649,23 +670,23 @@ export default function EngineeringPage() {
         <SectionHeader
           eyebrow="05 / OBSERVABILITY"
           title="A working system should be measurable."
-          description="Operational signals expose what the benchmark is actually doing."
+          description="Metrics and monitoring make the reconciliation engine inspectable beyond a successful run."
         />
 
-        <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_320px]">
+        <div className="mt-9 grid gap-12 lg:grid-cols-[1fr_340px]">
           <div>
             <TelemetryRow
               label="reconciliation records"
               value="400"
               width="76%"
-              tone="blue"
+              tone="steel"
             />
 
             <TelemetryRow
               label="LLM invocations"
               value="90"
               width="22.5%"
-              tone="blue"
+              tone="steel"
             />
 
             <TelemetryRow
@@ -682,16 +703,16 @@ export default function EngineeringPage() {
               tone="green"
             />
 
-            <div className="mt-10 border-t border-[#C9C4B8] pt-7">
-              <div className="font-mono text-[8px] font-semibold tracking-[0.16em] text-[#66737D]">
+            <div className="mt-10 border-t border-[#C9C4B8] pt-8">
+              <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-[#66737D]">
                 LATENCY DISTRIBUTION
               </div>
 
-              <div className="mt-6 grid gap-6 sm:grid-cols-2">
+              <div className="mt-6 grid gap-7 sm:grid-cols-2">
                 <Latency
                   label="P50"
                   value="78.01 ms"
-                  tone="blue"
+                  tone="steel"
                 />
 
                 <Latency
@@ -703,8 +724,8 @@ export default function EngineeringPage() {
             </div>
           </div>
 
-          <div className="border-l border-[#C9C4B8] pl-7">
-            <div className="font-mono text-[8px] font-semibold tracking-[0.16em] text-[#66737D]">
+          <div className="border-l border-[#C9C4B8] pl-8">
+            <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-[#66737D]">
               MONITORING PATH
             </div>
 
@@ -719,7 +740,7 @@ export default function EngineeringPage() {
             <Monitor
               label="PROMETHEUS"
               status="SCRAPING"
-              tone="blue"
+              tone="steel"
             />
 
             <MonitorConnector />
@@ -730,16 +751,16 @@ export default function EngineeringPage() {
               tone="copper"
             />
 
-            <div className="mt-8 border-t border-[#C9C4B8] pt-5">
-              <div className="font-mono text-[7px] tracking-[0.12em] text-[#737E84]">
+            <div className="mt-8 border-t border-[#C9C4B8] pt-6">
+              <div className="font-mono text-[8px] tracking-[0.12em] text-[#737E84]">
                 TARGET
               </div>
 
-              <div className="mt-2 font-mono text-sm font-semibold">
+              <div className="mt-2 font-mono text-base font-semibold">
                 ledgersync
               </div>
 
-              <div className="mt-1 font-mono text-[7px] text-[#7A848A]">
+              <div className="mt-1 font-mono text-[8px] text-[#7A848A]">
                 scrape interval · 5s
               </div>
             </div>
@@ -748,36 +769,36 @@ export default function EngineeringPage() {
       </section>
 
       {/* =====================================================
-          ENGINEERING SIGNAL
+          ENGINEERING SURFACE
           ===================================================== */}
 
       <section className="pt-16">
         <SectionHeader
           eyebrow="06 / ENGINEERING SURFACE"
           title="The product is only the visible edge."
-          description="The underlying system is supported by testing, containerization, observability and explicit AI controls."
+          description="The system behind the interface has its own engineering surface."
         />
 
-        <div className="mt-9 grid gap-8 lg:grid-cols-[220px_1fr]">
+        <div className="mt-9 grid gap-8 lg:grid-cols-[240px_1fr]">
           <div>
-            <div className="font-mono text-[8px] font-semibold tracking-[0.16em] text-[#66737D]">
-              CONFIDENCE SIGNAL
+            <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-[#66737D]">
+              VERIFIED TEST SURFACE
             </div>
 
-            <div className="mt-3 font-mono text-7xl font-semibold tracking-[-0.07em]">
-              150+
+            <div className="mt-2 font-mono text-7xl font-semibold tracking-[-0.07em]">
+              161
             </div>
 
-            <div className="mt-1 font-mono text-[8px] font-semibold tracking-[0.15em] text-[#B56A45]">
-              TESTS
+            <div className="mt-1 font-mono text-[9px] font-semibold tracking-[0.15em] text-[#B56A45]">
+              TESTS PASSED
             </div>
           </div>
 
-          <div className="grid gap-0 border-l border-[#C9C4B8] pl-7 sm:grid-cols-2">
+          <div className="grid gap-0 border-l border-[#C9C4B8] pl-8 sm:grid-cols-2">
             <SurfaceSignal
               title="TESTING"
-              value="150+ tests"
-              detail="Project-level verification surface."
+              value="161 passed"
+              detail="Current repository-level test result."
             />
 
             <SurfaceSignal
@@ -789,13 +810,13 @@ export default function EngineeringPage() {
             <SurfaceSignal
               title="OBSERVABILITY"
               value="Prometheus + Grafana"
-              detail="Operational metrics and dashboards."
+              detail="Runtime metrics and operational dashboards."
             />
 
             <SurfaceSignal
               title="AI CONTROL"
               value="Bounded"
-              detail="The model does not own final authorization."
+              detail="Ollama is invoked selectively and does not authorize outcomes."
             />
           </div>
         </div>
@@ -812,16 +833,16 @@ export default function EngineeringPage() {
         <SectionHeader
           eyebrow="07 / EVIDENCE BOUNDARY"
           title="Know what the benchmark proves."
-          description="The strongest engineering claim is often knowing what not to claim."
+          description="A serious evaluation separates measured evidence from claims that still require production validation."
         />
 
         <div className="mt-9 grid border-y border-[#25292D] lg:grid-cols-2">
-          <div className="py-9 lg:pr-10">
-            <div className="font-mono text-[8px] font-semibold tracking-[0.18em] text-[#617454]">
-              MEASURED
+          <div className="py-10 lg:pr-10">
+            <div className="font-mono text-[9px] font-semibold tracking-[0.18em] text-[#617454]">
+              MEASURED · CURRENT HYBRID RUN
             </div>
 
-            <div className="mt-7 space-y-4">
+            <div className="mt-7 space-y-5">
               <Proof
                 label="Records evaluated"
                 value="400"
@@ -830,6 +851,11 @@ export default function EngineeringPage() {
               <Proof
                 label="Successful requests"
                 value="400"
+              />
+
+              <Proof
+                label="Resolution accuracy"
+                value="76.00%"
               />
 
               <Proof
@@ -854,12 +880,12 @@ export default function EngineeringPage() {
             </div>
           </div>
 
-          <div className="border-t border-[#C9C4B8] py-9 lg:border-l lg:border-t-0 lg:pl-10">
-            <div className="font-mono text-[8px] font-semibold tracking-[0.18em] text-[#A97832]">
+          <div className="border-t border-[#C9C4B8] py-10 lg:border-l lg:border-t-0 lg:pl-10">
+            <div className="font-mono text-[9px] font-semibold tracking-[0.18em] text-[#A97832]">
               NOT YET PROVEN
             </div>
 
-            <div className="mt-7 space-y-4">
+            <div className="mt-7 space-y-5">
               <Unproven text="Production accuracy" />
               <Unproven text="Live bank integration behaviour" />
               <Unproven text="Production throughput" />
@@ -872,28 +898,31 @@ export default function EngineeringPage() {
       </section>
 
       {/* =====================================================
-          PRODUCTION PATH
+          PRODUCTION
           ===================================================== */}
 
-      <section className="pt-16">
+      <section
+        id="production"
+        className="scroll-mt-20 pt-16"
+      >
         <SectionHeader
           eyebrow="08 / PRODUCTION PATH"
           title="From benchmark to production."
-          description="The remaining work is visible instead of being hidden behind a production-ready label."
+          description="The remaining engineering work is visible and intentional."
         />
 
         <div className="mt-9 overflow-x-auto">
           <div className="min-w-[900px]">
             <div className="grid grid-cols-3 border-b-2 border-[#25292D] pb-4">
-              <div className="font-mono text-[8px] font-semibold tracking-[0.16em] text-[#617454]">
+              <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-[#617454]">
                 TODAY
               </div>
 
-              <div className="font-mono text-[8px] font-semibold tracking-[0.16em] text-[#557889]">
+              <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-[#557889]">
                 NEXT
               </div>
 
-              <div className="font-mono text-[8px] font-semibold tracking-[0.16em] text-[#A97832]">
+              <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-[#A97832]">
                 PRODUCTION
               </div>
             </div>
@@ -905,7 +934,7 @@ export default function EngineeringPage() {
             />
 
             <ProductionRow
-              today="150+ tests"
+              today="161 tests"
               next="CI + automated regression"
               production="Continuous delivery gates"
             />
@@ -942,32 +971,31 @@ export default function EngineeringPage() {
           ===================================================== */}
 
       <section className="pb-8 pt-20">
-        <div className="border-t-2 border-[#25292D] pt-10">
-          <div className="grid gap-12 lg:grid-cols-[1fr_360px]">
+        <div className="border-t-2 border-[#25292D] pt-11">
+          <div className="grid gap-12 lg:grid-cols-[1fr_380px]">
             <div>
               <div className="flex items-center gap-3">
                 <span className="h-1 w-8 bg-[#B56A45]" />
 
-                <span className="font-mono text-[8px] font-semibold tracking-[0.18em] text-[#66737D]">
+                <span className="font-mono text-[9px] font-semibold tracking-[0.18em] text-[#66737D]">
                   ENGINEERING STANCE
                 </span>
               </div>
 
               <h2 className="mt-6 max-w-5xl text-4xl font-semibold leading-[0.92] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
-                AI is a component.
+                Intelligence can improve
                 <br />
-                The system owns the decision.
+                without gaining authority.
               </h2>
 
-              <p className="mt-7 max-w-3xl text-base leading-7 text-[#657077]">
-                LedgerSync is deliberately structured so intelligence can
-                improve independently from authorization. A stronger model
-                should improve reasoning without silently gaining control over
-                the final financial decision.
+              <p className="mt-7 max-w-3xl text-base leading-7 text-[#657077] sm:text-lg sm:leading-8">
+                LedgerSync keeps reasoning, evidence, verification, and policy
+                separate so a stronger model does not silently become a more
+                powerful financial decision-maker.
               </p>
             </div>
 
-            <div className="border-l border-[#C9C4B8] pl-7">
+            <div className="border-l border-[#C9C4B8] pl-8">
               <Stance
                 number="01"
                 title="BUILD"
@@ -989,21 +1017,21 @@ export default function EngineeringPage() {
           </div>
 
           <div className="mt-12 flex flex-col gap-4 border-t border-[#C9C4B8] pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <span className="font-mono text-[8px] font-semibold tracking-[0.16em] text-[#66737D]">
+            <span className="font-mono text-[9px] font-semibold tracking-[0.16em] text-[#66737D]">
               LEDGERSYNC · ENGINEERING REVIEW
             </span>
 
             <div className="flex flex-wrap gap-2">
               <Link
                 href="/evaluation"
-                className="border border-[#A85F3E] px-4 py-3 font-mono text-[8px] font-semibold tracking-[0.13em] text-[#A85F3E] transition-colors hover:bg-[#A85F3E] hover:text-white"
+                className="border border-[#A85F3E] px-5 py-3 font-mono text-[9px] font-semibold tracking-[0.13em] text-[#A85F3E] transition-colors hover:bg-[#A85F3E] hover:text-white"
               >
                 VIEW EVALUATION
               </Link>
 
               <Link
                 href="/exceptions"
-                className="bg-[#25292D] px-4 py-3 font-mono text-[8px] font-semibold tracking-[0.13em] text-[#F3F0E8] transition-colors hover:bg-[#B56A45]"
+                className="bg-[#25292D] px-5 py-3 font-mono text-[9px] font-semibold tracking-[0.13em] text-[#F3F0E8] transition-colors hover:bg-[#B56A45]"
               >
                 INSPECT EXCEPTIONS
               </Link>
@@ -1030,15 +1058,15 @@ function SectionHeader({
 }) {
   return (
     <div className="max-w-4xl">
-      <div className="font-mono text-[8px] font-semibold tracking-[0.19em] text-[#B56A45]">
+      <div className="font-mono text-[10px] font-semibold tracking-[0.19em] text-[#B56A45]">
         {eyebrow}
       </div>
 
-      <h2 className="mt-3 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">
+      <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
         {title}
       </h2>
 
-      <p className="mt-3 max-w-3xl text-sm leading-6 text-[#69737A]">
+      <p className="mt-4 max-w-3xl text-base leading-7 text-[#69737A]">
         {description}
       </p>
     </div>
@@ -1052,15 +1080,17 @@ function SignalStat({
 }: {
   value: string;
   label: string;
-  tone: string;
+  tone: Tone;
 }) {
   return (
     <div>
-      <div className={`font-mono text-xl font-semibold ${toneText(tone)}`}>
+      <div
+        className={`font-mono text-2xl font-semibold tracking-[-0.04em] ${toneText(tone)}`}
+      >
         {value}
       </div>
 
-      <div className="mt-1 font-mono text-[7px] font-semibold tracking-[0.13em] text-[#7A848A]">
+      <div className="mt-1.5 font-mono text-[8px] font-semibold tracking-[0.13em] text-[#7A848A]">
         {label}
       </div>
     </div>
@@ -1076,19 +1106,21 @@ function ArchitectureNode({
   number: string;
   title: string;
   detail: string;
-  tone: string;
+  tone: Tone;
 }) {
   return (
-    <div className="w-[155px] border-l-2 border-[#3D4449] pl-4">
-      <div className="font-mono text-[8px] text-[#7A848A]">
+    <div className="w-[165px] border-l-2 border-[#3D4449] pl-4">
+      <div className="font-mono text-[9px] text-[#7A848A]">
         {number}
       </div>
 
-      <div className="mt-3 font-mono text-[10px] font-semibold tracking-[0.14em]">
+      <div className="mt-3 font-mono text-[11px] font-semibold tracking-[0.14em]">
         {title}
       </div>
 
-      <div className={`mt-1 font-mono text-[7px] tracking-[0.1em] ${toneText(tone)}`}>
+      <div
+        className={`mt-1.5 font-mono text-[8px] tracking-[0.1em] ${toneText(tone)}`}
+      >
         {detail}
       </div>
     </div>
@@ -1097,9 +1129,10 @@ function ArchitectureNode({
 
 function ArchitectureConnector() {
   return (
-    <div className="flex min-w-[70px] flex-1 items-center px-3">
+    <div className="flex min-w-[75px] flex-1 items-center px-3">
       <div className="h-px w-full bg-[#A7AAA5]" />
-      <span className="font-mono text-[9px] text-[#9B9F9D]">
+
+      <span className="font-mono text-[10px] text-[#9B9F9D]">
         →
       </span>
     </div>
@@ -1111,18 +1144,11 @@ function OutcomeToken({
   tone,
 }: {
   label: string;
-  tone: string;
+  tone: Tone;
 }) {
-  const border =
-    tone === "green"
-      ? "border-[#617454]"
-      : tone === "amber"
-        ? "border-[#A97832]"
-        : "border-[#A44A3D]";
-
   return (
     <span
-      className={`border px-3 py-2 font-mono text-[8px] font-semibold tracking-[0.11em] ${border} ${toneText(tone)}`}
+      className={`border px-3.5 py-2 font-mono text-[9px] font-semibold tracking-[0.11em] ${toneBorder(tone)} ${toneText(tone)}`}
     >
       {label}
     </span>
@@ -1138,11 +1164,11 @@ function DarkMeta({
 }) {
   return (
     <div>
-      <div className="font-mono text-[7px] tracking-[0.13em] text-[#74818A]">
+      <div className="font-mono text-[8px] font-semibold tracking-[0.13em] text-[#74818A]">
         {label}
       </div>
 
-      <div className="mt-1.5 font-mono text-[9px] font-semibold text-[#E2E6E8]">
+      <div className="mt-2 font-mono text-[11px] font-semibold text-[#E2E6E8]">
         {value}
       </div>
     </div>
@@ -1158,49 +1184,46 @@ function TraceEvent({
 }: {
   number: string;
   title: string;
-  tone: string;
+  tone: Tone;
   description?: string;
   items?: string[];
 }) {
   return (
-    <div className="relative flex gap-5 pb-8">
+    <div className="relative flex gap-5 pb-9">
       <div
         className={[
-          "relative z-10 grid h-6 w-6 shrink-0 place-items-center rounded-full border bg-[#25292D] font-mono text-[7px] font-semibold",
-          tone === "steel"
-            ? "border-[#557889]"
-            : tone === "copper"
-              ? "border-[#B56A45]"
-              : tone === "green"
-                ? "border-[#617454]"
-                : "border-[#6B7277]",
+          "relative z-10 grid h-7 w-7 shrink-0 place-items-center rounded-full border bg-[#25292D] font-mono text-[8px] font-semibold",
+          toneBorder(tone),
           toneText(tone),
         ].join(" ")}
       >
         {number}
       </div>
 
-      <div>
-        <div className={`font-mono text-[8px] font-semibold tracking-[0.15em] ${toneText(tone)}`}>
+      <div className="min-w-0">
+        <div
+          className={`font-mono text-[9px] font-semibold tracking-[0.15em] ${toneText(tone)}`}
+        >
           {title}
         </div>
 
         {description && (
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#B8C0C4]">
+          <p className="mt-2 max-w-3xl text-base leading-7 text-[#B8C0C4]">
             {description}
           </p>
         )}
 
         {items && (
-          <div className="mt-3 space-y-1.5">
+          <div className="mt-4 space-y-2">
             {items.map((item) => (
               <div
                 key={item}
-                className="font-mono text-[8px] text-[#AAB3B8]"
+                className="font-mono text-[9px] leading-5 text-[#AAB3B8]"
               >
                 <span className="mr-2 text-[#87A27A]">
                   ✓
                 </span>
+
                 {item}
               </div>
             ))}
@@ -1221,16 +1244,16 @@ function Principle({
   value: string;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="font-mono text-[8px] font-semibold tracking-[0.13em]">
+    <div className="flex items-center gap-4">
+      <span className="font-mono text-[9px] font-semibold tracking-[0.13em]">
         {title}
       </span>
 
-      <span className="font-mono text-lg text-[#B56A45]">
+      <span className="font-mono text-xl text-[#B56A45]">
         {symbol}
       </span>
 
-      <span className="font-mono text-[8px] font-semibold tracking-[0.13em] text-[#66737D]">
+      <span className="font-mono text-[9px] font-semibold tracking-[0.13em] text-[#66737D]">
         {value}
       </span>
     </div>
@@ -1246,21 +1269,23 @@ function TelemetryRow({
   label: string;
   value: string;
   width: string;
-  tone: string;
+  tone: Tone;
 }) {
   return (
-    <div className="mb-6">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="font-mono text-[8px] tracking-[0.11em] text-[#66737D]">
+    <div className="mb-7">
+      <div className="mb-2.5 flex items-center justify-between">
+        <span className="font-mono text-[10px] tracking-[0.11em] text-[#66737D]">
           {label}
         </span>
 
-        <span className={`font-mono text-[9px] font-semibold ${toneText(tone)}`}>
+        <span
+          className={`font-mono text-[11px] font-semibold ${toneText(tone)}`}
+        >
           {value}
         </span>
       </div>
 
-      <div className="h-1 bg-[#DDD9CF]">
+      <div className="h-1.5 bg-[#DDD9CF]">
         <div
           className={`h-full ${toneFill(tone)}`}
           style={{ width }}
@@ -1277,15 +1302,17 @@ function Latency({
 }: {
   label: string;
   value: string;
-  tone: string;
+  tone: Tone;
 }) {
   return (
-    <div className="border-l-2 border-[#C9C4B8] pl-4">
-      <div className="font-mono text-[8px] font-semibold tracking-[0.13em] text-[#66737D]">
+    <div className="border-l-2 border-[#C9C4B8] pl-5">
+      <div className="font-mono text-[9px] font-semibold tracking-[0.13em] text-[#66737D]">
         {label}
       </div>
 
-      <div className={`mt-2 font-mono text-2xl font-semibold tracking-[-0.03em] ${toneText(tone)}`}>
+      <div
+        className={`mt-2 font-mono text-3xl font-semibold tracking-[-0.04em] ${toneText(tone)}`}
+      >
         {value}
       </div>
     </div>
@@ -1299,15 +1326,17 @@ function Monitor({
 }: {
   label: string;
   status: string;
-  tone: string;
+  tone: Tone;
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-[#D4CFC5] py-4">
-      <span className="font-mono text-[8px] font-semibold tracking-[0.13em]">
+    <div className="flex items-center justify-between border-b border-[#D4CFC5] py-5">
+      <span className="font-mono text-[9px] font-semibold tracking-[0.13em]">
         {label}
       </span>
 
-      <span className={`font-mono text-[7px] font-semibold tracking-[0.11em] ${toneText(tone)}`}>
+      <span
+        className={`font-mono text-[8px] font-semibold tracking-[0.11em] ${toneText(tone)}`}
+      >
         ● {status}
       </span>
     </div>
@@ -1331,15 +1360,15 @@ function SurfaceSignal({
 }) {
   return (
     <div className="border-b border-[#D4CFC5] pb-7 pr-7 pt-1">
-      <div className="font-mono text-[8px] font-semibold tracking-[0.14em] text-[#66737D]">
+      <div className="font-mono text-[9px] font-semibold tracking-[0.14em] text-[#66737D]">
         {title}
       </div>
 
-      <div className="mt-2 font-mono text-lg font-semibold text-[#557889]">
+      <div className="mt-2 font-mono text-xl font-semibold text-[#557889]">
         {value}
       </div>
 
-      <p className="mt-1.5 text-xs leading-5 text-[#768086]">
+      <p className="mt-2 text-sm leading-6 text-[#768086]">
         {detail}
       </p>
     </div>
@@ -1354,12 +1383,12 @@ function Proof({
   value: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-5 border-b border-[#DDD8CE] pb-3">
-      <span className="text-sm text-[#626D73]">
+    <div className="flex items-center justify-between gap-6 border-b border-[#DDD8CE] pb-3.5">
+      <span className="text-base text-[#626D73]">
         {label}
       </span>
 
-      <span className="font-mono text-[9px] font-semibold text-[#25292D]">
+      <span className="font-mono text-[11px] font-semibold text-[#25292D]">
         {value}
       </span>
     </div>
@@ -1372,12 +1401,12 @@ function Unproven({
   text: string;
 }) {
   return (
-    <div className="flex items-center gap-3 border-b border-[#DDD8CE] pb-3">
-      <span className="font-mono text-[9px] text-[#A97832]">
+    <div className="flex items-center gap-3 border-b border-[#DDD8CE] pb-3.5">
+      <span className="font-mono text-[10px] text-[#A97832]">
         —
       </span>
 
-      <span className="text-sm text-[#70797E]">
+      <span className="text-base text-[#70797E]">
         {text}
       </span>
     </div>
@@ -1395,15 +1424,15 @@ function ProductionRow({
 }) {
   return (
     <div className="grid grid-cols-3 border-b border-[#D4CFC5]">
-      <div className="py-5 pr-8 text-sm text-[#4F5A61]">
+      <div className="py-6 pr-8 text-base text-[#4F5A61]">
         {today}
       </div>
 
-      <div className="border-l border-[#D4CFC5] px-8 py-5 text-sm text-[#55717E]">
+      <div className="border-l border-[#D4CFC5] px-8 py-6 text-base text-[#55717E]">
         {next}
       </div>
 
-      <div className="border-l border-[#D4CFC5] py-5 pl-8 text-sm text-[#8D6E36]">
+      <div className="border-l border-[#D4CFC5] py-6 pl-8 text-base text-[#8D6E36]">
         {production}
       </div>
     </div>
@@ -1422,16 +1451,16 @@ function Stance({
   return (
     <div className="border-b border-[#D4CFC5] py-5 first:pt-0 last:border-b-0">
       <div className="flex items-center gap-3">
-        <span className="font-mono text-[7px] text-[#B56A45]">
+        <span className="font-mono text-[8px] text-[#B56A45]">
           {number}
         </span>
 
-        <span className="font-mono text-[8px] font-semibold tracking-[0.14em]">
+        <span className="font-mono text-[9px] font-semibold tracking-[0.14em]">
           {title}
         </span>
       </div>
 
-      <div className="mt-2 text-sm text-[#68737A]">
+      <div className="mt-2 text-base text-[#68737A]">
         {text}
       </div>
     </div>

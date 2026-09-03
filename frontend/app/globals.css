@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+:root {
+  --canvas: #ece9e2;
+  --surface: #f8f6f0;
+  --surface-strong: #ffffff;
+  --surface-muted: #e2ddd4;
+
+  --navy: #111d2e;
+  --navy-2: #1a2a40;
+  --navy-3: #263a53;
+
+  --ink: #121821;
+  --ink-soft: #3e4854;
+  --ink-muted: #73808d;
+  --ink-inverse: #f7f5ef;
+
+  --copper: #b86845;
+  --copper-dark: #8f4b31;
+  --copper-soft: #f1ddd2;
+
+  --blue: #246b89;
+  --blue-soft: #dcecf2;
+
+  --lime: #5d7f38;
+  --lime-soft: #e6efd9;
+
+  --amber: #a66f20;
+  --amber-soft: #f8ead0;
+
+  --red: #b54a40;
+  --red-soft: #f4dedb;
+
+  --border: #d3ccc1;
+  --border-strong: #b4aa9c;
+  --border-dark: #2c3d52;
+
+  --shadow-sm: 0 1px 2px rgba(17, 29, 46, 0.06);
+  --shadow-md: 0 12px 28px rgba(17, 29, 46, 0.08);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-surface-muted: var(--surface-muted);
+
+  --color-navy: var(--navy);
+  --color-navy-2: var(--navy-2);
+  --color-navy-3: var(--navy-3);
+
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-inverse: var(--ink-inverse);
+
+  --color-copper: var(--copper);
+  --color-copper-dark: var(--copper-dark);
+  --color-copper-soft: var(--copper-soft);
+
+  --color-blue: var(--blue);
+  --color-blue-soft: var(--blue-soft);
+
+  --color-lime: var(--lime);
+  --color-lime-soft: var(--lime-soft);
+
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+
+  --color-red: var(--red);
+  --color-red-soft: var(--red-soft);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-border-dark: var(--border-dark);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--canvas);
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family:
+    var(--font-geist-sans),
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  background: var(--copper);
+  color: #fff;
+}
+
+.technical-grid {
+  background-image:
+    linear-gradient(
+      to right,
+      rgba(17, 29, 46, 0.032) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      rgba(17, 29, 46, 0.032) 1px,
+      transparent 1px
+    );
+  background-size: 28px 28px;
+}
